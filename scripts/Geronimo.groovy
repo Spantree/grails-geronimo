@@ -51,18 +51,7 @@ getDependencyIvyFileList = {
 	}
 }
 
-target(listDependencies: "Display a list of Ivy dependencies for this Grails project") {
-	println "Retrieving runtime dependencies"
-	def dependencies = getDependencyIvyFileList()
-	dependencies.each {
-		println "- $it"
-	}
-}
-
-target(generateGeronimoPlugins: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
-	println "Retrieving runtime dependencies"
-	def writer = new StringWriter()
-	def xml = new MarkupBuilder(writer)
+generateCorePom = { xml ->
 	xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
 		modelVersion('4.0.0')
 		parent() {
@@ -132,11 +121,43 @@ target(generateGeronimoPlugins: "Generates Maven pom.xml files which can be pack
 			}
 		}
 	}
-	println writer.toString()
+}
+
+generateCorePlan = { xml ->
+	xml.module {
+		environment {
+			'hidden-classes' {
+				filter('org.jaxen')
+				filter('org.springframework')
+				filter('org.apache.cxf')
+				filter('org.apache.commons')
+			}
+		}
+	}
+}
+
+target(listDependencies: "Display a list of Ivy dependencies for this Grails project") {
+	println "Retrieving runtime dependencies"
+	def dependencies = getDependencyIvyFileList()
+	dependencies.each {
+		println "- $it"
+	}
+}
+
+target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
+	println "Generating Grails Core Maven Project"
+	
+	new File('target/geronimo/grails-core/').mkdirs()
+	def pomWriter = new FileWriter('target/geronimo/grails-core/pom.xml')
+	generateCorePom(new MarkupBuilder(pomWriter))
+	
+	new File('target/geronimo/grails-core/src/main/plan').mkdirs()
+	def planWriter = new FileWriter('target/geronimo/grails-core/src/main/plan/plan.xml')
+	generateCorePlan(new MarkupBuilder(planWriter))
 }
 
 target(main: "The description of the script goes here!") {
- 	depends(listDependencies, generateGeronimoPlugins)
+ 	depends(listDependencies, generateCore)
 }
 
 setDefaultTarget(main)
