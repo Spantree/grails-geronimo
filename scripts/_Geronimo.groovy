@@ -1,5 +1,10 @@
 import groovy.xml.MarkupBuilder
 
+// For extracting core dependencies
+import grails.util.BuildSettings
+import grails.util.Metadata
+import org.codehaus.groovy.grails.resolve.IvyDependencyManager
+
 includeTargets << grailsScript("Init")
 includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
@@ -37,7 +42,7 @@ class Library {
 	}
 }
 
-getDependencyIvyFileList = {
+getAppDependencyIvyFileList = {
 	grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
 		def d = new Library(packages: [jar])
 		def ivyBase = jar.parentFile.parentFile
@@ -90,7 +95,7 @@ generateCorePom = { xml ->
 				type('car')
 				scope('provided')
 			}
-			getDependencyIvyFileList().each { dep ->
+			getAppDependencyIvyFileList().each { dep ->
 				dependency() {
 					groupId(dep.groupId)
 					artifactId(dep.artifactId)
@@ -136,11 +141,28 @@ generateCorePlan = { xml ->
 	}
 }
 
-target(listDependencies: "Display a list of Ivy dependencies for this Grails project") {
-	println "Retrieving runtime dependencies"
-	def dependencies = getDependencyIvyFileList()
+target(listCoreDependencies: "Display a list of core/default dependencies") {
+    Metadata metadata = Metadata.current
+    def appName = metadata.getApplicationName() ?: "grails"
+    def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+
+    BuildSettings dummyBuildSettings = new BuildSettings()
+    IvyDependencyManager defaultDependencyManager = new IvyDependencyManager(appName, appVersion, dummyBuildSettings, metadata)                                   
+   
+    Closure defaultDependencies = defaultDependencyManager.getDefaultDependencies( grailsSettings.grailsVersion )
+    defaultDependencyManager.parseDependencies( defaultDependencies )
+
+    defaultDependencyManager.moduleDescriptor.getDependencies().each {
+        println "${it.getModuleConfigurations()} -> ${it.getDependencyRevisionId().getName()}"
+    }
+}
+
+target(listAppDependencies: "Display a list of Ivy dependencies for this Grails project") {
+	println "Retrieving app dependencies"
+
+    def dependencies = getAppDependencyIvyFileList()
 	dependencies.each {
-		println "- $it"
+	    println "- $it"
 	}
 }
 
