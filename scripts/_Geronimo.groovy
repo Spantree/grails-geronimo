@@ -9,6 +9,8 @@ includeTargets << grailsScript("Init")
 includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
 
+includeTargets << grailsScript("_GrailsPlugins")
+
 class Library {
 	String groupId, artifactId, version, packaging
 	File ivyFile
@@ -154,6 +156,31 @@ target(listCoreDependencies: "Display a list of core/default dependencies") {
 
     defaultDependencyManager.moduleDescriptor.getDependencies().each {
         println "${it.getModuleConfigurations()} -> ${it.getDependencyRevisionId().getName()}"
+    }
+}
+
+target(listPluginDependencies: "Display a list of dependencies for each plugin") {
+    Metadata metadata = Metadata.current
+    def appName = metadata.getApplicationName() ?: "grails"
+    def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+
+    def pluginInfos = pluginSettings.getPluginInfos()
+
+    pluginInfos.each {
+        println "-------------------\nProcessing ${it.pluginDir.file.canonicalPath}\n-------------------"
+        IvyDependencyManager dependencyManager = new IvyDependencyManager( appName, appVersion, grailsSettings, metadata )
+        dependencyManager.moduleDescriptor = dependencyManager.createModuleDescriptor()
+        def callable = grailsSettings.pluginDependencyHandler( dependencyManager )
+        callable.call(new File("${it.pluginDir.file.canonicalPath}"))
+
+        dependencyManager.moduleDescriptor.getDependencies().each{
+        	println "${it.getModuleConfigurations()} -> ${it.getDependencyRevisionId().getName()}"
+        }
+
+        def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar")}
+        pluginJars.each{
+            println "[lib] -> $it"
+        }
     }
 }
 
