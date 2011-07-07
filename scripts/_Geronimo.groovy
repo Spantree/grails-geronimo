@@ -1,16 +1,16 @@
+// Imports
 import groovy.xml.MarkupBuilder
-
-// For extracting core dependencies
 import grails.util.BuildSettings
 import grails.util.Metadata
 import org.codehaus.groovy.grails.resolve.IvyDependencyManager
 
+// Includes
 includeTargets << grailsScript("Init")
 includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
-
 includeTargets << grailsScript("_GrailsPlugins")
 
+// Library class
 class Library {
 	String groupId, artifactId, version, packaging
 	File ivyFile
@@ -44,18 +44,96 @@ class Library {
 	}
 }
 
+// Globals
+def runtimeConfig = "runtime"
+def coreDependencies    // A list of core dependencies Library objects
+def pluginDependencies  // A map from plugin name -> map [ modules:[list of Library objects] libs:[jar names]]
+def appDependencies     // A list of runtime dependencies Library objects for this application
+
+Library createLibraryFromDependencyDescriptor( def dd )
+{
+    def d = new Library()
+    d.groupId = dd.dependencyRevisionId.organisation
+    d.artifactId = dd.dependencyRevisionId.name
+    d.version = dd.dependencyRevisionId.revision
+    d.packaging = "jar"
+    return d
+}
+
 getAppDependencyIvyFileList = {
-	grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-		def d = new Library(packages: [jar])
-		def ivyBase = jar.parentFile.parentFile
-		ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
-			def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
-			if(jar.name ==~ ".*${version}.*") {
-				d.ivyFile = ivyFile
-			}
-		}
-		dependencies << d
-	}
+    if ( appDependencies ) {
+        return appDependencies
+    }
+    else {
+        appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
+		    def d = new Library(packages: [jar])
+		    def ivyBase = jar.parentFile.parentFile
+		    ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
+			    def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
+			    if(jar.name ==~ ".*${version}.*") {
+				    d.ivyFile = ivyFile
+			    }
+		    }
+		    dependencies << d
+	    }
+    }
+}
+
+getCoreDependencies = {
+    if ( !coreDependencies )
+    {
+        Metadata metadata = Metadata.current
+        def appName = metadata.getApplicationName() ?: "grails"
+        def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+
+        BuildSettings dummyBuildSettings = new BuildSettings()
+        IvyDependencyManager defaultDependencyManager = new IvyDependencyManager(appName, appVersion, dummyBuildSettings, metadata)                                   
+       
+        Closure defaultDependencies = defaultDependencyManager.getDefaultDependencies( grailsSettings.grailsVersion )
+        defaultDependencyManager.parseDependencies( defaultDependencies )
+
+        coreDependencies = []
+        defaultDependencyManager.moduleDescriptor.dependencies.each {
+            if ( (it.moduleConfigurations as ArrayList).contains( runtimeConfig ) ) {
+                coreDependencies << createLibraryFromDependencyDescriptor( it )
+            }
+        }
+    }
+    return coreDependencies
+}
+
+getPluginDependencies = {
+    if (!pluginDependencies)
+    {
+        Metadata metadata = Metadata.current
+        def appName = metadata.getApplicationName() ?: "grails"
+        def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+
+        pluginDependencies = [:]
+
+        pluginSettings.pluginInfos.each {
+            IvyDependencyManager dependencyManager = new IvyDependencyManager( appName, appVersion, grailsSettings, metadata )
+            dependencyManager.moduleDescriptor = dependencyManager.createModuleDescriptor()
+            def callable = grailsSettings.pluginDependencyHandler( dependencyManager )
+            callable.call(new File("${it.pluginDir.file.canonicalPath}"))
+
+            def currentPluginName = it.name
+            pluginDependencies[ currentPluginName ] = [ modules:[], libs:[] ] 
+            
+            dependencyManager.moduleDescriptor.dependencies.each {
+                if ( (it.moduleConfigurations as ArrayList).contains( runtimeConfig ) ) {
+            	    pluginDependencies[ currentPluginName ].modules << createLibraryFromDependencyDescriptor( it )
+                }
+            }
+
+            def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar")}
+            pluginJars.each{
+                pluginDependencies[ currentPluginName ].libs << it
+            }
+        }
+    }
+
+    return pluginDependencies
 }
 
 generateCorePom = { xml ->
@@ -144,53 +222,30 @@ generateCorePlan = { xml ->
 }
 
 target(listCoreDependencies: "Display a list of core/default dependencies") {
-    Metadata metadata = Metadata.current
-    def appName = metadata.getApplicationName() ?: "grails"
-    def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
-
-    BuildSettings dummyBuildSettings = new BuildSettings()
-    IvyDependencyManager defaultDependencyManager = new IvyDependencyManager(appName, appVersion, dummyBuildSettings, metadata)                                   
-   
-    Closure defaultDependencies = defaultDependencyManager.getDefaultDependencies( grailsSettings.grailsVersion )
-    defaultDependencyManager.parseDependencies( defaultDependencies )
-
-    defaultDependencyManager.moduleDescriptor.getDependencies().each {
-        println "${it.getModuleConfigurations()} -> ${it.getDependencyRevisionId().getName()}"
-    }
+    println "Retrieving core dependencies"
+	getCoreDependencies().each {
+	    println "- $it"
+	}
 }
 
 target(listPluginDependencies: "Display a list of dependencies for each plugin") {
-    Metadata metadata = Metadata.current
-    def appName = metadata.getApplicationName() ?: "grails"
-    def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
-
-    def pluginInfos = pluginSettings.getPluginInfos()
-
-    pluginInfos.each {
-        println "-------------------\nProcessing ${it.pluginDir.file.canonicalPath}\n-------------------"
-        IvyDependencyManager dependencyManager = new IvyDependencyManager( appName, appVersion, grailsSettings, metadata )
-        dependencyManager.moduleDescriptor = dependencyManager.createModuleDescriptor()
-        def callable = grailsSettings.pluginDependencyHandler( dependencyManager )
-        callable.call(new File("${it.pluginDir.file.canonicalPath}"))
-
-        dependencyManager.moduleDescriptor.getDependencies().each{
-        	println "${it.getModuleConfigurations()} -> ${it.getDependencyRevisionId().getName()}"
+    println "Retrieving plugin dependencies"
+    getPluginDependencies().each {
+        println "-------------------\nPLUGIN: $it.key\n-------------------"         
+        it.value.modules.each {
+            println "- $it"
         }
-
-        def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar")}
-        pluginJars.each{
-            println "[lib] -> $it"
+        it.value.libs.each {
+            println "[LIB] - $it"
         }
-    }
+	}
 }
 
 target(listAppDependencies: "Display a list of Ivy dependencies for this Grails project") {
 	println "Retrieving app dependencies"
-
-    def dependencies = getAppDependencyIvyFileList()
-	dependencies.each {
-	    println "- $it"
-	}
+    getAppDependencyIvyFileList().each {
+        println "- $it"
+    }
 }
 
 target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
@@ -217,6 +272,11 @@ target(skinnyWar: "Generates a skinny war") {
 target(generateCars: "Generates car files") {
     // TODO:
     println "You have called target: 'generateCars'."
+}
+
+target(debugTest: "Test code goes here") {
+    // TODO:
+    assert getAppDependencyIvyFileList() == getAppDependencyIvyFileList()
 }
 
 setDefaultTarget(main)
