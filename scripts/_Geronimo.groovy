@@ -26,38 +26,37 @@ class Dependency {
     // How this dependency is packaged (e.g - 'jar')
     String packaging
     // The ivy file specifying this dependency (may be null)
-	File ivyFile
+    File ivyFile
     // The packages [jar] files that make up this artifact (may be null)
-	File[] packages
+    File[] packages
 
-    
-    // Extract dependency information from an Ivy file 	
-	void setIvyFile(File ivyFile) {
-		this.@ivyFile = ivyFile
-		def ivy = new XmlParser().parse(ivyFile)
-		def info = ivy.info[0]
-		this.groupId = info.@organisation
-		this.artifactId = info.@module
-		this.version = info.@revision
-		// println ivy.publications.artifact
-		this.packaging = ivy.publications.artifact.find { it.@conf in ['master', 'default'] }?.@type
-	}
-	
-	String toString() {
-		"$groupId:$artifactId:$version:$packaging"
-	}
-	
-	String getMavenDependencyElement() {
-		def writer = new StringWriter()
-		def xml = new MarkupBuilder(writer)
-		xml.dependency() {
-			groupId(this.groupId)
-			artifactId(this.artifactId)
-			version(this.version)
-			type(this.packaging) 
-		}
-		writer.toString()
-	}
+    // Extract dependency information from an Ivy file     
+    void setIvyFile(File ivyFile) {
+        this.@ivyFile = ivyFile
+        def ivy = new XmlParser().parse(ivyFile)
+        def info = ivy.info[0]
+        this.groupId = info.@organisation
+        this.artifactId = info.@module
+        this.version = info.@revision
+        // println ivy.publications.artifact
+        this.packaging = ivy.publications.artifact.find { it.@conf in ['master', 'default'] }?.@type
+    }
+
+    String toString() {
+        "$groupId:$artifactId:$version:$packaging"
+    }
+
+    String getMavenDependencyElement() {
+        def writer = new StringWriter()
+        def xml = new MarkupBuilder(writer)
+        xml.dependency() {
+            groupId(this.groupId)
+            artifactId(this.artifactId)
+            version(this.version)
+            type(this.packaging) 
+        }
+        writer.toString()
+    }
 }
 
 // Globals
@@ -152,7 +151,7 @@ getPluginDependencies = {
             
             dependencyManager.moduleDescriptor.dependencies.each {
                 if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) {
-            	    pluginDependencies[ currentPluginName ].modules << createDependencyFromDependencyDescriptor( it )
+                    pluginDependencies[ currentPluginName ].modules << createDependencyFromDependencyDescriptor( it )
                 }
             }
 
@@ -169,16 +168,16 @@ getPluginDependencies = {
 getAppDependencyIvyFileList = {
     if ( !appDependencies ) {
         appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-		    def d = new Dependency(packages: [jar])
-		    def ivyBase = jar.parentFile.parentFile
-		    ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
-			    def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
-			    if(jar.name ==~ ".*${version}.*") {
-				    d.ivyFile = ivyFile
-			    }
-		    }
-		    dependencies << d
-	    }
+            def d = new Dependency(packages: [jar])
+            def ivyBase = jar.parentFile.parentFile
+            ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
+                def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
+                if(jar.name ==~ ".*${version}.*") {
+                    d.ivyFile = ivyFile
+                }
+            }
+            dependencies << d
+        }
     }
     return appDependencies
 }
@@ -199,88 +198,88 @@ getSkinnyAppDependencies = {
 // Utilities for generating Pom and Plan files
 
 generateCorePom = { xml ->
-	xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
-		modelVersion('4.0.0')
-		parent() {
-			groupId('org.apache.geronimo.genesis.config')
-			artifactId('project-config')
-			version('1.5')
-		}
-		groupId('org.apache.geronimo.plugins')
-		artifactId('grails-core')
-		name('Geronimo Plugins :: Geronimo Grails Core Plugin')
-		packaging('car')
-		version(grailsVersion)
-		properties() {
-			geronimoVersion('2.2.1')
-			projectName('Geronimo Plugins :: Geronimo Grails Core Plugin')
-		}
-		dependencies {
-			dependency {
-				groupId('org.apache.geronimo.framework')
-				artifactId('geronimo-gbean-deployer')
-				version('${geronimoVersion}')
-				type('car')
-				scope('provided')
-			}
-			dependency {
-				groupId('org.apache.geronimo.configs')
-				artifactId('j2ee-deployer')
-				version('${geronimoVersion}')
-				type('car')
-				scope('provided')
-			}
-			dependency() {
-				groupId('org.apache.geronimo.framework')
-				artifactId('jee-specs')
-				version('${geronimoVersion}')
-				type('car')
-				scope('provided')
-			}
-			getAppDependencyIvyFileList().each { dep ->
-				dependency() {
-					groupId(dep.groupId)
-					artifactId(dep.artifactId)
-					version(dep.version)
-					type(dep.packaging)
-				}
-			}
-		}
-		build() {
-			plugins() {
-				plugin() {
-					groupId('org.apache.geronimo.buildsupport')
-					artifactId('car-maven-plugin')
-					version('${geronimoVersion}')
-					extensions('true')
-					configuration() {
-						archive() {
-							addMavenDescriptor('false')
-						}
-						category('Geronimo Plugins')
-						osiApproved('true')
-						useMavenDependencies() {
-							value('true')
-							includeVersion('true')
-						}
-					}
-				}
-			}
-		}
-	}
+    xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
+        modelVersion('4.0.0')
+        parent() {
+            groupId('org.apache.geronimo.genesis.config')
+            artifactId('project-config')
+            version('1.5')
+        }
+        groupId('org.apache.geronimo.plugins')
+        artifactId('grails-core')
+        name('Geronimo Plugins :: Geronimo Grails Core Plugin')
+        packaging('car')
+        version(grailsVersion)
+        properties() {
+            geronimoVersion('2.2.1')
+            projectName('Geronimo Plugins :: Geronimo Grails Core Plugin')
+        }
+        dependencies {
+            dependency {
+                groupId('org.apache.geronimo.framework')
+                artifactId('geronimo-gbean-deployer')
+                version('${geronimoVersion}')
+                type('car')
+                scope('provided')
+            }
+            dependency {
+                groupId('org.apache.geronimo.configs')
+                artifactId('j2ee-deployer')
+                version('${geronimoVersion}')
+                type('car')
+                scope('provided')
+            }
+            dependency() {
+                groupId('org.apache.geronimo.framework')
+                artifactId('jee-specs')
+                version('${geronimoVersion}')
+                type('car')
+                scope('provided')
+            }
+            getAppDependencyIvyFileList().each { dep ->
+                dependency() {
+                    groupId(dep.groupId)
+                    artifactId(dep.artifactId)
+                    version(dep.version)
+                    type(dep.packaging)
+                }
+            }
+        }
+        build() {
+            plugins() {
+                plugin() {
+                    groupId('org.apache.geronimo.buildsupport')
+                    artifactId('car-maven-plugin')
+                    version('${geronimoVersion}')
+                    extensions('true')
+                    configuration() {
+                        archive() {
+                            addMavenDescriptor('false')
+                        }
+                        category('Geronimo Plugins')
+                        osiApproved('true')
+                        useMavenDependencies() {
+                            value('true')
+                            includeVersion('true')
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 generateCorePlan = { xml ->
-	xml.module {
-		environment {
-			'hidden-classes' {
-				filter('org.jaxen')
-				filter('org.springframework')
-				filter('org.apache.cxf')
-				filter('org.apache.commons')
-			}
-		}
-	}
+    xml.module {
+        environment {
+            'hidden-classes' {
+                filter('org.jaxen')
+                filter('org.springframework')
+                filter('org.apache.cxf')
+                filter('org.apache.commons')
+            }
+        }
+    }
 }
 
 // Targets for listing dependencies
@@ -288,9 +287,9 @@ generateCorePlan = { xml ->
 target(listCoreDependencies: "Display a list of core/default dependencies") {
     depends(compile)
     println "Retrieving core dependencies"
-	getCoreDependencies().each {
-	    println "- $it"
-	}
+    getCoreDependencies().each {
+        println "- $it"
+    }
 }
 
 target(listPluginDependencies: "Display a list of dependencies for each plugin") {
@@ -303,11 +302,11 @@ target(listPluginDependencies: "Display a list of dependencies for each plugin")
         it.value.libs.each {
             println "[LIB] - $it"
         }
-	}
+    }
 }
 
 target(listAppDependencies: "Display a list of Ivy dependencies for this Grails project") {
-	println "Retrieving app dependencies"
+    println "Retrieving app dependencies"
     getAppDependencyIvyFileList().each {
         println "- $it"
     }
@@ -323,15 +322,15 @@ target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny
 // Targets for building skinny wars
 
 target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
-	println "Generating Grails Core Maven Project"
-	
-	new File('target/geronimo/grails-core/').mkdirs()
-	def pomWriter = new FileWriter('target/geronimo/grails-core/pom.xml')
-	generateCorePom(new MarkupBuilder(pomWriter))
-	
-	new File('target/geronimo/grails-core/src/main/plan').mkdirs()
-	def planWriter = new FileWriter('target/geronimo/grails-core/src/main/plan/plan.xml')
-	generateCorePlan(new MarkupBuilder(planWriter))
+    println "Generating Grails Core Maven Project"
+    
+    new File('target/geronimo/grails-core/').mkdirs()
+    def pomWriter = new FileWriter('target/geronimo/grails-core/pom.xml')
+    generateCorePom(new MarkupBuilder(pomWriter))
+    
+    new File('target/geronimo/grails-core/src/main/plan').mkdirs()
+    def planWriter = new FileWriter('target/geronimo/grails-core/src/main/plan/plan.xml')
+    generateCorePlan(new MarkupBuilder(planWriter))
 }
 
 target(generateCars: "Generates car files") {
@@ -353,7 +352,7 @@ target(debugTest: "Test code goes here") {
 // Main target
 
 target(main: "The description of the script goes here!") {
- 	depends(listDependencies, generateCore)
+     depends(listDependencies, generateCore)
 }
 
 setDefaultTarget(main)
