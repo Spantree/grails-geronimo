@@ -1,21 +1,36 @@
 // Imports
+
 import groovy.xml.MarkupBuilder
 import grails.util.BuildSettings
 import grails.util.Metadata
 import org.codehaus.groovy.grails.resolve.IvyDependencyManager
 
 // Includes
+
 includeTargets << grailsScript("Init")
 includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
 includeTargets << grailsScript("_GrailsPlugins")
 
-// Library class
-class Library {
-	String groupId, artifactId, version, packaging
+// Classes
+
+// A class for storing info on a single dependency
+class Dependency {
+
+    // Stores the organisation that created the artifact
+	String groupId
+    // The 'artefact' id
+    String artifactId
+    // The version number
+    String version
+    // How this dependency is packaged (e.g - 'jar')
+    String packaging
+    // The ivy file specifying this dependency (may be null)
 	File ivyFile
+    // The packages [jar] files that make up this artifact (may be null)
 	File[] packages
-	
+
+    // Extract dependency information from an Ivy file 	
 	void setIvyFile(File ivyFile) {
 		this.@ivyFile = ivyFile
 		def ivy = new XmlParser().parse(ivyFile)
@@ -45,14 +60,33 @@ class Library {
 }
 
 // Globals
-def runtimeConfig = "runtime"
-def coreDependencies    // A list of core dependencies Library objects
-def pluginDependencies  // A map from plugin name -> map [ modules:[list of Library objects] libs:[jar names]]
-def appDependencies     // A list of runtime dependencies Library objects for this application
 
-Library createLibraryFromDependencyDescriptor( def dd )
+// This defines which configurations we're interested in
+def runtimeConfigurations = ["runtime", "compile"]
+
+// A list of core runtime dependencies
+def coreDependencies
+
+// A map from plugin name -> map [ modules:[list of runtime Dependency objects] libs:[jar names] ]
+def pluginDependencies
+
+// A list of runtime dependencies for this application
+def appDependencies
+
+// Utilities for extracting runtime dependencies
+
+// Returns true if module configuration is found within our configurations list
+boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurations )
 {
-    def d = new Library()
+    return (moduleConfigurations as ArrayList).any { 
+        runtimeConfigurations.contains( it )
+    }
+}
+
+// Extracts dependency information from a parameter Spring DependencyDescriptor
+Dependency createDependencyFromDependencyDescriptor( def dd )
+{
+    def d = new Dependency()
     d.groupId = dd.dependencyRevisionId.organisation
     d.artifactId = dd.dependencyRevisionId.name
     d.version = dd.dependencyRevisionId.revision
@@ -60,13 +94,14 @@ Library createLibraryFromDependencyDescriptor( def dd )
     return d
 }
 
+// Extracts application runtime information and associated Ivy files
 getAppDependencyIvyFileList = {
     if ( appDependencies ) {
         return appDependencies
     }
     else {
         appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-		    def d = new Library(packages: [jar])
+		    def d = new Dependency(packages: [jar])
 		    def ivyBase = jar.parentFile.parentFile
 		    ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
 			    def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
@@ -79,6 +114,7 @@ getAppDependencyIvyFileList = {
     }
 }
 
+// Extracts grails core runtime dependencies
 getCoreDependencies = {
     if ( !coreDependencies )
     {
@@ -94,14 +130,15 @@ getCoreDependencies = {
 
         coreDependencies = []
         defaultDependencyManager.moduleDescriptor.dependencies.each {
-            if ( (it.moduleConfigurations as ArrayList).contains( runtimeConfig ) ) {
-                coreDependencies << createLibraryFromDependencyDescriptor( it )
+            if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) { 
+                coreDependencies << createDependencyFromDependencyDescriptor( it )
             }
         }
     }
     return coreDependencies
 }
 
+// Extracts runtime dependencies for all installed plugins
 getPluginDependencies = {
     if (!pluginDependencies)
     {
@@ -121,8 +158,8 @@ getPluginDependencies = {
             pluginDependencies[ currentPluginName ] = [ modules:[], libs:[] ] 
             
             dependencyManager.moduleDescriptor.dependencies.each {
-                if ( (it.moduleConfigurations as ArrayList).contains( runtimeConfig ) ) {
-            	    pluginDependencies[ currentPluginName ].modules << createLibraryFromDependencyDescriptor( it )
+                if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) {
+            	    pluginDependencies[ currentPluginName ].modules << createDependencyFromDependencyDescriptor( it )
                 }
             }
 
@@ -135,6 +172,8 @@ getPluginDependencies = {
 
     return pluginDependencies
 }
+
+// Utilities for generating Pom and Plan files
 
 generateCorePom = { xml ->
 	xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
@@ -221,7 +260,10 @@ generateCorePlan = { xml ->
 	}
 }
 
+// Targets for listing dependencies
+
 target(listCoreDependencies: "Display a list of core/default dependencies") {
+    depends(compile)
     println "Retrieving core dependencies"
 	getCoreDependencies().each {
 	    println "- $it"
@@ -248,6 +290,8 @@ target(listAppDependencies: "Display a list of Ivy dependencies for this Grails 
     }
 }
 
+// Targets for building skinny wars
+
 target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
 	println "Generating Grails Core Maven Project"
 	
@@ -260,8 +304,9 @@ target(generateCore: "Generates Maven pom.xml files which can be packaged into G
 	generateCorePlan(new MarkupBuilder(planWriter))
 }
 
-target(main: "The description of the script goes here!") {
- 	depends(listDependencies, generateCore)
+target(generateCars: "Generates car files") {
+    // TODO:
+    println "You have called target: 'generateCars'."
 }
 
 target(skinnyWar: "Generates a skinny war") {
@@ -269,14 +314,17 @@ target(skinnyWar: "Generates a skinny war") {
     println "You have called target: 'skinnyWar'."
 }
 
-target(generateCars: "Generates car files") {
-    // TODO:
-    println "You have called target: 'generateCars'."
-}
+// Scratch/Debug targets
 
 target(debugTest: "Test code goes here") {
     // TODO:
     assert getAppDependencyIvyFileList() == getAppDependencyIvyFileList()
+}
+
+// Main target
+
+target(main: "The description of the script goes here!") {
+ 	depends(listDependencies, generateCore)
 }
 
 setDefaultTarget(main)
