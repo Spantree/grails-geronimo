@@ -18,7 +18,7 @@ includeTargets << grailsScript("_GrailsPlugins")
 class Dependency {
 
     // Stores the organisation that created the artifact
-	String groupId
+    String groupId
     // The 'artefact' id
     String artifactId
     // The version number
@@ -30,6 +30,7 @@ class Dependency {
     // The packages [jar] files that make up this artifact (may be null)
 	File[] packages
 
+    
     // Extract dependency information from an Ivy file 	
 	void setIvyFile(File ivyFile) {
 		this.@ivyFile = ivyFile
@@ -73,6 +74,9 @@ def pluginDependencies
 // A list of runtime dependencies for this application
 def appDependencies
 
+// A list of all application dependencies minus core and plugin
+def skinnyAppDependencies
+
 // Utilities for extracting runtime dependencies
 
 // Returns true if module configuration is found within our configurations list
@@ -94,23 +98,12 @@ Dependency createDependencyFromDependencyDescriptor( def dd )
     return d
 }
 
-// Extracts application runtime information and associated Ivy files
-getAppDependencyIvyFileList = {
-    if ( appDependencies ) {
-        return appDependencies
-    }
-    else {
-        appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-		    def d = new Dependency(packages: [jar])
-		    def ivyBase = jar.parentFile.parentFile
-		    ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
-			    def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
-			    if(jar.name ==~ ".*${version}.*") {
-				    d.ivyFile = ivyFile
-			    }
-		    }
-		    dependencies << d
-	    }
+// Performs A - B set operation
+List getDependencySetDifference( def dependencyListA, def dependencyListB ) {
+   dependencyListA.findAll {
+        aDep -> !dependencyListB.any {
+            bDep -> (bDep as String) == (aDep as String)    
+        } 
     }
 }
 
@@ -169,8 +162,38 @@ getPluginDependencies = {
             }
         }
     }
-
     return pluginDependencies
+}
+
+// Extracts application runtime information and associated Ivy files
+getAppDependencyIvyFileList = {
+    if ( !appDependencies ) {
+        appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
+		    def d = new Dependency(packages: [jar])
+		    def ivyBase = jar.parentFile.parentFile
+		    ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
+			    def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
+			    if(jar.name ==~ ".*${version}.*") {
+				    d.ivyFile = ivyFile
+			    }
+		    }
+		    dependencies << d
+	    }
+    }
+    return appDependencies
+}
+
+getSkinnyAppDependencies = {
+    if ( !skinnyAppDependencies ) {
+        // Remove core dependencies
+        skinnyAppDependencies = getDependencySetDifference( getAppDependencyIvyFileList(), getCoreDependencies() )
+      
+        // Remove plugin dependencies
+        getPluginDependencies().each {
+                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.value.modules )               
+        }
+    }
+    return skinnyAppDependencies
 }
 
 // Utilities for generating Pom and Plan files
@@ -290,6 +313,13 @@ target(listAppDependencies: "Display a list of Ivy dependencies for this Grails 
     }
 }
 
+target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny war") {
+    println "Retrieving skinny app dependencies"
+    getSkinnyAppDependencies().each {
+        println "- $it"
+    }
+}
+
 // Targets for building skinny wars
 
 target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
@@ -318,7 +348,6 @@ target(skinnyWar: "Generates a skinny war") {
 
 target(debugTest: "Test code goes here") {
     // TODO:
-    assert getAppDependencyIvyFileList() == getAppDependencyIvyFileList()
 }
 
 // Main target
