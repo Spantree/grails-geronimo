@@ -12,6 +12,30 @@ includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
 includeTargets << grailsScript("_GrailsPlugins")
 
+// Globals
+
+// This defines which configurations we're interested in
+def runtimeConfigurations = ["runtime", "compile"]
+
+// A list of core runtime dependencies
+def coreDependencies
+
+// A map from plugin name -> map [ modules:[list of runtime Dependency objects] libs:[jar names] ]
+def pluginDependencies
+
+// A list of runtime dependencies for this application
+def appDependencies
+
+// A list of all application dependencies minus core and plugin
+def skinnyAppDependencies
+
+// Maps a key ("group:artifact") to mapped group and artifact ids
+def mappedMavenGroupAndArtifactIds = [
+	"apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
+	"org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
+	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-web" ]
+]
+
 // Classes
 
 // A class for storing info on a single dependency
@@ -46,6 +70,13 @@ class Dependency {
         "$groupId:$artifactId:$version:$packaging"
     }
 
+	// Returns Maven mapped group and artifact identifiers
+	Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
+		def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+		def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
+		return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
+	}
+	
     String getMavenDependencyElement() {
         def writer = new StringWriter()
         def xml = new MarkupBuilder(writer)
@@ -58,23 +89,6 @@ class Dependency {
         writer.toString()
     }
 }
-
-// Globals
-
-// This defines which configurations we're interested in
-def runtimeConfigurations = ["runtime", "compile"]
-
-// A list of core runtime dependencies
-def coreDependencies
-
-// A map from plugin name -> map [ modules:[list of runtime Dependency objects] libs:[jar names] ]
-def pluginDependencies
-
-// A list of runtime dependencies for this application
-def appDependencies
-
-// A list of all application dependencies minus core and plugin
-def skinnyAppDependencies
 
 // Utilities for extracting runtime dependencies
 
@@ -236,10 +250,10 @@ generateCorePom = { xml ->
                 type('car')
                 scope('provided')
             }
-            getAppDependencyIvyFileList().each { dep ->
+            getCoreDependencies().each { dep ->
                 dependency() {
-                    groupId(dep.groupId)
-                    artifactId(dep.artifactId)
+                    groupId(dep.getMavenGroupAndArtifactIds(mappedMavenGroupAndArtifactIds).groupId)
+                    artifactId(dep.getMavenGroupAndArtifactIds(mappedMavenGroupAndArtifactIds).artifactId)
                     version(dep.version)
                     type(dep.packaging)
                 }
@@ -321,7 +335,7 @@ target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny
 
 // Targets for building skinny wars
 
-target(generateCore: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
+target(generateCoreCar: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
     println "Generating Grails Core Maven Project"
     
     new File('target/geronimo/grails-core/').mkdirs()
