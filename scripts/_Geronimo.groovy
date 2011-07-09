@@ -29,11 +29,18 @@ def appDependencies
 // A list of all application dependencies minus core and plugin
 def skinnyAppDependencies
 
-// Maps a key ("group:artifact") to mapped group and artifact ids
+// Maps a key ("group:artifact") to maven group and artifact ids
+// TODO: This probably needs to be set from a data file somewhere and the keys need to be ivy group and artifact names
 def mappedMavenGroupAndArtifactIds = [
 	"apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
 	"org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
 	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-web" ]
+]
+
+// Global maven settings
+def mavenSettings = [
+    geronimoVersion : '2.1.3',
+    groupId : 'org.apache.geronimo.plugins'
 ]
 
 // Classes
@@ -70,13 +77,15 @@ class Dependency {
         "$groupId:$artifactId:$version:$packaging"
     }
 
-	// Returns Maven mapped group and artifact identifiers
-	Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
-		def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
-		def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
-		return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
-	}
+    // Returns Maven mapped group and artifact identifiers
+    // TODO: This should use non-processed keys!
+    Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
+        def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+        def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
+        return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
+    }
 	
+    // TODO: Is this function necessary - should we remove this?
     String getMavenDependencyElement() {
         def writer = new StringWriter()
         def xml = new MarkupBuilder(writer)
@@ -93,16 +102,14 @@ class Dependency {
 // Utilities for extracting runtime dependencies
 
 // Returns true if module configuration is found within our configurations list
-boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurations )
-{
+boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurations ) {
     return (moduleConfigurations as ArrayList).any { 
         runtimeConfigurations.contains( it )
     }
 }
 
 // Extracts dependency information from a parameter Spring DependencyDescriptor
-Dependency createDependencyFromDependencyDescriptor( def dd )
-{
+Dependency createDependencyFromDependencyDescriptor( def dd ) {
     def d = new Dependency()
     d.groupId = dd.dependencyRevisionId.organisation
     d.artifactId = dd.dependencyRevisionId.name
@@ -169,7 +176,7 @@ getPluginDependencies = {
                 }
             }
 
-            def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar")}
+            def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar") }
             pluginJars.each{
                 pluginDependencies[ currentPluginName ].libs << it
             }
@@ -211,22 +218,31 @@ getSkinnyAppDependencies = {
 
 // Utilities for generating Pom and Plan files
 
-generateCorePom = { xml ->
-    xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
+// Populates a pom xml file for building a car
+// Takes an arguments map = [ 
+//      xml:(markupBuilder), - the markup builder used for generating the xml
+//      mappedMavenGroupAndArtifactIds:(map) - maps ivy group and artifact ids to maven ids
+//      geronimoVersion:(string) - the version of geronimo to use
+//      groupId:(string), - the group id for this pom
+//      artifactId:(string), - the artifact id for this pom/car
+//      name:(string), - the name/short description for this pom
+//      dependencies:(list) - the list of dependencies to include within the pom for building with maven
+void generatePomXml( def args ) {
+    args.xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
         modelVersion('4.0.0')
         parent() {
             groupId('org.apache.geronimo.genesis.config')
             artifactId('project-config')
             version('1.5')
         }
-        groupId('org.apache.geronimo.plugins')
-        artifactId('grails-core')
-        name('Geronimo Plugins :: Geronimo Grails Core Plugin')
+        groupId(args.groupId)
+        artifactId(args.artifactId)
+        name(args.name)
         packaging('car')
         version(grailsVersion)
         properties() {
-            geronimoVersion('2.1.3')
-            projectName('Geronimo Plugins :: Geronimo Grails Core Plugin')
+            geronimoVersion(args.geronimoVersion)
+            projectName(args.name)
         }
         dependencies {
             dependency {
@@ -250,10 +266,10 @@ generateCorePom = { xml ->
                 type('car')
                 scope('provided')
             }
-            getCoreDependencies().each { dep ->
+            args.dependencies.each { dep ->
                 dependency() {
-                    groupId(dep.getMavenGroupAndArtifactIds(mappedMavenGroupAndArtifactIds).groupId)
-                    artifactId(dep.getMavenGroupAndArtifactIds(mappedMavenGroupAndArtifactIds).artifactId)
+                    groupId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).groupId)
+                    artifactId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).artifactId)
                     version(dep.version)
                     type(dep.packaging)
                 }
@@ -283,7 +299,7 @@ generateCorePom = { xml ->
     }
 }
 
-generateCorePlan = { xml ->
+void generatePlanXml( def xml ) {
     xml.module(xmlns:'http://geronimo.apache.org/xml/ns/deployment-1.2') {
         environment {
             'hidden-classes' {
@@ -294,6 +310,25 @@ generateCorePlan = { xml ->
             }
         }
     }
+}
+
+void generatePomAndPlanXml( def mappedMavenGroupAndArtifactIds, def mavenSettings, def basePath, def artifactId, def name, def dependencies ) {
+    def artifactRootPath = "$basePath/$artifactId"
+    new File( "$artifactRootPath/" ).mkdirs()
+    def pomWriter = new FileWriter("$artifactRootPath/pom.xml")
+    generatePomXml( 
+        [ 'xml' : (new MarkupBuilder(pomWriter)), 
+          'mappedMavenGroupAndArtifactIds' : mappedMavenGroupAndArtifactIds, 
+          'groupId' : mavenSettings.groupId,
+          'geronimoVersion' : mavenSettings.geronimoVersion,
+          'artifactId' : artifactId,
+          'name' : name,
+          'dependencies' : dependencies ]
+    )
+    
+    new File("$artifactRootPath/src/main/plan/").mkdirs()
+    def planWriter = new FileWriter("$artifactRootPath/src/main/plan/plan.xml")
+    generatePlanXml(new MarkupBuilder(planWriter))
 }
 
 // Targets for listing dependencies
@@ -309,7 +344,7 @@ target(listCoreDependencies: "Display a list of core/default dependencies") {
 target(listPluginDependencies: "Display a list of dependencies for each plugin") {
     println "Retrieving plugin dependencies"
     getPluginDependencies().each {
-        println "-------------------\nPLUGIN: $it.key\n-------------------"         
+        println "-------------------\nPLUGIN: ${it.key}\n-------------------"         
         it.value.modules.each {
             println "- $it"
         }
@@ -335,16 +370,31 @@ target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny
 
 // Targets for building skinny wars
 
-target(generateCoreCar: "Generates Maven pom.xml files which can be packaged into Geronimo plugins") {
-    println "Generating Grails Core Maven Project"
-    
-    new File('target/geronimo/grails-core/').mkdirs()
-    def pomWriter = new FileWriter('target/geronimo/grails-core/pom.xml')
-    generateCorePom(new MarkupBuilder(pomWriter))
-    
-    new File('target/geronimo/grails-core/src/main/plan').mkdirs()
-    def planWriter = new FileWriter('target/geronimo/grails-core/src/main/plan/plan.xml')
-    generateCorePlan(new MarkupBuilder(planWriter))
+target(generateCoreCar: "Generates Maven pom.xml and plan.xml files which can be packaged into Geronimo plugins") {
+    println "Generating Maven XML for grails-core"
+    generatePomAndPlanXml(
+        mappedMavenGroupAndArtifactIds,
+        mavenSettings,
+        'target/geronimo',
+        'grails-core',
+        'Geronimo Plugins :: Geronimo Grails Core Plugin',
+        getCoreDependencies()
+    )
+}
+
+target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each installed plugin" )
+{
+    getPluginDependencies().each {
+        println "Generating Maven XML for ${it.key}"
+        generatePomAndPlanXml(
+            mappedMavenGroupAndArtifactIds,
+            mavenSettings,
+            'target/geronimo/grails-plugins',
+            it.key,
+            "Geronimo Plugins :: Geronimo ${it.key} Plugin",
+            it.value.modules
+        )
+    }
 }
 
 target(generateCars: "Generates car files") {
