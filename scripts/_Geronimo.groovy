@@ -31,9 +31,9 @@ def skinnyAppDependencies
 
 // Maps a key ("group:artifact") to mapped group and artifact ids
 def mappedMavenGroupAndArtifactIds = [
-    "apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
-    "org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
-    "org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-web" ]
+	"apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
+	"org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
+	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-web" ]
 ]
 
 // Classes
@@ -70,13 +70,13 @@ class Dependency {
         "$groupId:$artifactId:$version:$packaging"
     }
 
-    // Returns Maven mapped group and artifact identifiers
-    Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
-        def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
-        def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
-        return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
-    }
-    
+	// Returns Maven mapped group and artifact identifiers
+	Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
+		def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+		def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
+		return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
+	}
+	
     String getMavenDependencyElement() {
         def writer = new StringWriter()
         def xml = new MarkupBuilder(writer)
@@ -225,7 +225,7 @@ generateCorePom = { xml ->
         packaging('car')
         version(grailsVersion)
         properties() {
-            geronimoVersion('2.2.1')
+            geronimoVersion('2.1.3')
             projectName('Geronimo Plugins :: Geronimo Grails Core Plugin')
         }
         dependencies {
@@ -284,7 +284,7 @@ generateCorePom = { xml ->
 }
 
 generateCorePlan = { xml ->
-    xml.module {
+    xml.module(xmlns:'http://geronimo.apache.org/xml/ns/deployment-1.2') {
         environment {
             'hidden-classes' {
                 filter('org.jaxen')
