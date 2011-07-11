@@ -156,8 +156,8 @@ getPluginDependencies = {
     if (!pluginDependencies)
     {
         Metadata metadata = Metadata.current
-        def appName = metadata.getApplicationName() ?: "grails"
-        def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+        def appName = metadata.applicationName() ?: "grails"
+        def appVersion = metadata.applicationVersion() ?: grailsSettings.grailsVersion
 
         pluginDependencies = [:]
 
