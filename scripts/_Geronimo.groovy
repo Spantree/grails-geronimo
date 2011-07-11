@@ -399,12 +399,17 @@ target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each ins
 }
 
 target(generateCars: "Generates car files") {
-    // TODO:
-    println "You have called target: 'generateCars'."
+    depends(generateCoreCar, generatePluginCars)
+    new File("target/geronimo").eachDir { File pomBase ->
+        println "Packaging car from ${pomBase}/pom.xml"
+        def proc = "mvn package".execute([], pomBase)
+        System.out << proc.text
+        proc.waitFor()
+    }
 }
 
 target(skinnyWar: "Generates a skinny war") {
-    // TODO:
+    depends(generateCars)
     println "You have called target: 'skinnyWar'."
 }
 
