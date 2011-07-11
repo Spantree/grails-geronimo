@@ -210,7 +210,7 @@ getSkinnyAppDependencies = {
       
         // Remove plugin dependencies
         getPluginDependencies().each {
-                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.value.modules )               
+                skinnyAppDependencies = getDependencySetDifference(      it.value.modules )               
         }
     }
     return skinnyAppDependencies
@@ -389,7 +389,7 @@ target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each ins
         generatePomAndPlanXml(
             mappedMavenGroupAndArtifactIds,
             mavenSettings,
-            'target/geronimo/grails-plugins',
+            "target/geronimo/grails-${it.key}",
             it.key,
             "Geronimo Plugins :: Geronimo ${it.key} Plugin",
             it.value.modules
