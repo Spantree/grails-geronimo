@@ -385,12 +385,13 @@ target(generateCoreCar: "Generates Maven pom.xml and plan.xml files which can be
 target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each installed plugin" )
 {
     getPluginDependencies().each {
-        println "Generating Maven XML for ${it.key}"
+        def artifactName ="grails-${it.key}"
+        println "Generating Maven XML for ${artifactName}"
         generatePomAndPlanXml(
             mappedMavenGroupAndArtifactIds,
             mavenSettings,
-            "target/geronimo/grails-${it.key}",
-            it.key,
+            'target/geronimo',
+            artifactName,
             "Geronimo Plugins :: Geronimo ${it.key} Plugin",
             it.value.modules
         )
