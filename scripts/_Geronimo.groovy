@@ -39,7 +39,7 @@ def mappedMavenGroupAndArtifactIds = [
 
 // Global maven settings
 def mavenSettings = [
-    geronimoVersion : '2.1.3',
+    geronimoVersion : '2.1.7',
     groupId : 'org.apache.geronimo.plugins'
 ]
 
