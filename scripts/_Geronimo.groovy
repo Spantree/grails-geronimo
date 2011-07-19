@@ -370,7 +370,7 @@ target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny
 
 // Targets for building skinny wars
 
-target(generateCoreCar: "Generates Maven pom.xml and plan.xml files which can be packaged into Geronimo plugins") {
+target(stageCore: "Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins") {
     println "Generating Maven XML for grails-core"
     generatePomAndPlanXml(
         mappedMavenGroupAndArtifactIds,
@@ -382,8 +382,7 @@ target(generateCoreCar: "Generates Maven pom.xml and plan.xml files which can be
     )
 }
 
-target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each installed plugin" )
-{
+target( stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin" ) {
     getPluginDependencies().each {
         def artifactName ="grails-${it.key}"
         println "Generating Maven XML for ${artifactName}"
@@ -399,7 +398,7 @@ target( generatePluginCars: "Generates a Maven pom.xml and plan.xml for each ins
 }
 
 target(generateCars: "Generates car files") {
-    depends(generateCoreCar, generatePluginCars)
+    depends(stageCore, stagePlugins)
     new File("target/geronimo").eachDir { File pomBase ->
         println "Packaging car from ${pomBase}/pom.xml"
         def proc = "mvn package".execute([], pomBase)
