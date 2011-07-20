@@ -11,6 +11,7 @@ includeTargets << grailsScript("Init")
 includeTargets << grailsScript("_GrailsClean")
 includeTargets << grailsScript("_GrailsPackage")
 includeTargets << grailsScript("_GrailsPlugins")
+includeTargets << grailsScript("_GrailsWar")
 
 // Globals
 
@@ -75,6 +76,10 @@ class Dependency {
 
     String toString() {
         "$groupId:$artifactId:$version:$packaging"
+    }
+
+    String getPackagedName() {
+        "${artifactId}-${version}.${packaging}"
     }
 
     // Returns Maven mapped group and artifact identifiers
@@ -409,7 +414,53 @@ target(generateCars: "Generates car files") {
 
 target(skinnyWar: "Generates a skinny war") {
     depends(generateCars)
-    println "You have called target: 'skinnyWar'."
+    
+    // Flag that we should not delete the war staging directory
+    buildExplodedWar = true
+    
+    // Build the exploded war (does not actually generate a war file)
+    war()
+
+    // Extract jars which are core or plugin dependencies
+    def jarsToDelete = []
+    def libDir = new File("${stagingDir}/WEB-INF/lib")
+    // Iterate over all jar files within lib dir
+    libDir.eachFileMatch(~/.*\.jar/) {
+        // Determine if jar file is a core or plugin dependency
+        def jarName = it.name
+        def isCoreDep = getCoreDependencies().any { it.packagedName == jarName }
+        def isPluginDep =  isCoreDep ? false : getPluginDependencies().any {
+               it.value.modules.any { it.packagedName == jarName } || it.value.libs.any { it.name == jarName }
+        }
+
+        if ( isCoreDep || isPluginDep )
+        {
+            jarsToDelete << "${libDir}/${jarName}"
+        }
+    }
+
+    // Delete all jars that are core or plugin dependencies
+    jarsToDelete.each {
+        ant.delete(file:"${it}", failonerror:true)
+    }
+
+    // Update the bundled jars classpath in the manifest file
+    String manifestFile = "$stagingDir/META-INF/MANIFEST.MF"
+    def classPathEntries = [ ".", "WEB-INF/classes" ]
+    libDir.eachFileMatch(~/.*\.jar/) { classPathEntries << "WEB-INF/lib/${it.name}" }
+    def classPath = classPathEntries.join(',')
+    ant.manifest(file:manifestFile, mode:'update') {
+        attribute(name:"Bundle-ClassPath",value:"${classPath}")
+    }
+
+    // Create the skinny war file
+    def warFile = new File(warName)
+    def dir = warFile.parentFile
+    if (!dir.exists()) ant.mkdir(dir:dir)
+        ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile)
+
+    // Remove staging dir
+    cleanUpAfterWar()
 }
 
 // Scratch/Debug targets
