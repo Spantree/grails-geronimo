@@ -434,9 +434,7 @@ target(skinnyWar: "Generates a skinny war") {
         }
 
         if ( isCoreDep || isPluginDep )
-        {
             jarsToDelete << "${libDir}/${jarName}"
-        }
     }
 
     // Delete all jars that are core or plugin dependencies
