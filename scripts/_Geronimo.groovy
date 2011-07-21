@@ -90,19 +90,6 @@ class Dependency {
         def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
         return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
     }
-	
-    // TODO: Is this function necessary - should we remove this?
-    String getMavenDependencyElement() {
-        def writer = new StringWriter()
-        def xml = new MarkupBuilder(writer)
-        xml.dependency() {
-            groupId(this.groupId)
-            artifactId(this.artifactId)
-            version(this.version)
-            type(this.packaging) 
-        }
-        writer.toString()
-    }
 }
 
 // Utilities for extracting runtime dependencies
@@ -214,7 +201,7 @@ getSkinnyAppDependencies = {
       
         // Remove plugin dependencies
         getPluginDependencies().each {
-                skinnyAppDependencies = getDependencySetDifference(      it.value.modules )               
+                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.value.modules )               
         }
     }
     return skinnyAppDependencies
