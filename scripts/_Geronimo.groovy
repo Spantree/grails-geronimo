@@ -44,6 +44,16 @@ def mavenSettings = [
     groupId : 'org.apache.geronimo.plugins'
 ]
 
+// TODO: This needs to be either read from a commandline or some sort of config - is it okay here?
+// Application information used for geronimo deployment
+def geronimoAppSettings = [
+    groupId : "org.apache.geronimo.plugins",
+    artifactId : "unknown",
+    version : "0.1",
+    packaging: "war",
+    contextRoot: "/offset"
+]
+
 // Classes
 
 // A class for storing info on a single dependency
@@ -221,7 +231,53 @@ getSkinnyAppDependencies = {
     return skinnyAppDependencies
 }
 
-// Utilities for generating Pom and Plan files
+// Utilities for generating XML files
+
+// Generates a geronimo web xml for grails war deployment
+// Takes an arguments map = [ 
+//      xml:(markupBuilder), - the markup builder used for generating the xml
+//      groupId:(string), - the group id for this war
+//      artifactId:(string), - the artifact id for this war
+//      version:(string), - the version for this war (optional - defaults to "0.1")
+//      packaging:(string), - the archive type (optional - defaults to "war")
+//      contextRoot:(string), - the applications relative server path
+//      dependencies:(list) - the list of dependencies to include within the pom for building with maven
+void generateGeronimoWebXml( def args ) {
+    args.xml.mkp.xmlDeclaration(version:'1.0', encoding:"UTF-8")
+    args.xml.'web-app'(xmlns:"http://geronimo.apache.org/xml/ns/j2ee/web-1.1") {
+        environment(xmlns:"http://geronimo.apache.org/xml/ns/deployment-1.1") {
+            moduleId {
+                groupId(args.groupId)
+                artifactId(args.artifactId)
+                version(args.version?:"0.1")
+                type(args.packaging?:"war")
+            }
+
+            if ( args.dependencies ) {
+                dependencies {
+                    args.dependencies.each { dep ->
+                        groupId( dep.groupId )
+                        artifactId( dep.artifactId )
+                        version( dep.version )
+                        type( dep.packaging )
+                    }
+                }
+            }
+
+            'hidden-classes' {
+                filter('org.springframework')
+                filter('org.apache.cxf')
+                filter('org.apache.commons')
+                filter('org.codehaus.groovy')
+            }
+            'non-overridable-classes' {
+                filter('javax.transaction')
+            }
+            'inverse-classloading'()
+        }
+        'context-root'(args.contextRoot)
+    }
+}
 
 // Populates a pom xml file for building a car
 // Takes an arguments map = [ 
@@ -387,7 +443,7 @@ target(stageCore: "Generates Maven pom.xml and plan.xml files for grails-core wh
     )
 }
 
-target( stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin" ) {
+target(stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
     getPluginDependencies().each {
         def artifactName ="grails-${it.key}"
         println "Generating Maven XML for ${artifactName}"
@@ -410,6 +466,35 @@ target(generateCars: "Generates car files") {
         System.out << proc.text
         proc.waitFor()
     }
+}
+
+target(fatWar: "Generates a fat war suitable for geronimo deployment") {
+   // Flag that we should not delete the war staging directory
+    buildExplodedWar = true
+    
+    // Build the exploded war (does not actually generate a war file)
+    war()
+
+    // Create the geronimo-web.xml file
+    generateGeronimoWebXml(
+        [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
+          groupId : geronimoAppSettings.groupId,
+          artifactId : geronimoAppSettings.artifactId,
+          version : geronimoAppSettings.version,
+          packaging : geronimoAppSettings.packaging,
+          contextRoot : geronimoAppSettings.contextRoot ] 
+    )
+    
+    String manifestFile = "$stagingDir/META-INF/MANIFEST.MF"
+
+    // Create the war file
+    def warFile = new File(warName)
+    def dir = warFile.parentFile
+    if (!dir.exists()) ant.mkdir(dir:dir)
+        ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile)
+
+    // Remove staging dir
+    cleanUpAfterWar()       
 }
 
 target(skinnyWar: "Generates a skinny war") {
@@ -451,7 +536,9 @@ target(skinnyWar: "Generates a skinny war") {
         attribute(name:"Bundle-ClassPath",value:"${classPath}")
     }
 
-    // Create the skinny war file
+    // TODO: generate geronimo-web.xml file here
+
+    // Create the war file
     def warFile = new File(warName)
     def dir = warFile.parentFile
     if (!dir.exists()) ant.mkdir(dir:dir)
