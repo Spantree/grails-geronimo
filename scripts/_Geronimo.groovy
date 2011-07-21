@@ -135,8 +135,7 @@ List getDependencySetDifference( def dependencyListA, def dependencyListB ) {
 
 // Extracts grails core runtime dependencies
 getCoreDependencies = {
-    if ( !coreDependencies )
-    {
+    if ( !coreDependencies ) {
         Metadata metadata = Metadata.current
         def appName = metadata.getApplicationName() ?: "grails"
         def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
@@ -159,8 +158,7 @@ getCoreDependencies = {
 
 // Extracts runtime dependencies for all installed plugins
 getPluginDependencies = {
-    if (!pluginDependencies)
-    {
+    if (!pluginDependencies) {
         Metadata metadata = Metadata.current
         def appName = metadata.applicationName ?: "grails"
         def appVersion = metadata.applicationVersion ?: grailsSettings.grailsVersion
@@ -183,7 +181,7 @@ getPluginDependencies = {
             }
 
             def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar") }
-            pluginJars.each{
+            pluginJars.each {
                 pluginDependencies[ currentPluginName ].libs << it
             }
         }
@@ -383,6 +381,46 @@ void generatePomAndPlanXml( def mappedMavenGroupAndArtifactIds, def mavenSetting
     generatePlanXml(new MarkupBuilder(planWriter))
 }
 
+// War utilities
+
+// Returns an arguments map with the default parameters for generating geronimo-web.xml
+getDefaultGeronimoWebXmlParams = { dependencies ->
+    def xmlParams = [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
+      groupId : grailsConfigHolder.config.grails.project.groupId,
+      artifactId : grailsAppName,
+      version : metadata.getApplicationVersion(),
+      packaging : "war",
+      contextRoot : grailsAppName ]
+
+    if ( dependencies )
+        xmlParams.dependencies = dependencies
+ 
+    return xmlParams
+}
+
+// Returns the default manifest file name for use in war generation
+getDefaultManifestFileName = {
+    return "$stagingDir/META-INF/MANIFEST.MF"
+}
+
+// Generates a non-archived war in a staging directory
+generateExplodedWar = { 
+    // Flag that we should not delete the war staging directory
+    buildExplodedWar = true
+    
+    // Build the exploded war (does not actually generate a war file)
+    war()
+}
+
+// Collects war staging directory into a single war archive file
+generateWarArchive = { manifestFile ->
+    // Create the war file
+    def warFile = new File(warName)
+    def dir = warFile.parentFile
+    if (!dir.exists()) ant.mkdir(dir:dir)
+        ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile?:getDefaultManifestFileName())
+}
+
 // Targets for listing dependencies
 
 target(listCoreDependencies: "Display a list of core/default dependencies") {
@@ -459,30 +497,13 @@ target(generateCars: "Generates car files") {
     }
 }
 
-target(fatWar: "Generates a fat war suitable for geronimo deployment") {
-   // Flag that we should not delete the war staging directory
-    buildExplodedWar = true
-    
-    // Build the exploded war (does not actually generate a war file)
-    war()
+target(fatWar: "Generates a fat war suitable for geronimo deployment") {   
+    generateExplodedWar()
 
     // Create the geronimo-web.xml file
-    generateGeronimoWebXml(
-        [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
-          groupId : grailsConfigHolder.config.grails.project.groupId,
-          artifactId : grailsAppName,
-          version : metadata.getApplicationVersion(),
-          packaging : "war",
-          contextRoot : grailsAppName ] 
-    )
+    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams() )
     
-    String manifestFile = "$stagingDir/META-INF/MANIFEST.MF"
-
-    // Create the war file
-    def warFile = new File(warName)
-    def dir = warFile.parentFile
-    if (!dir.exists()) ant.mkdir(dir:dir)
-        ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile)
+    generateWarArchive()
 
     // Remove staging dir
     cleanUpAfterWar()       
@@ -491,11 +512,7 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
 target(skinnyWar: "Generates a skinny war") {
     depends(generateCars)
     
-    // Flag that we should not delete the war staging directory
-    buildExplodedWar = true
-    
-    // Build the exploded war (does not actually generate a war file)
-    war()
+    generateExplodedWar()
 
     // Extract jars which are core or plugin dependencies
     def jarsToDelete = []
@@ -519,7 +536,7 @@ target(skinnyWar: "Generates a skinny war") {
     }
 
     // Update the bundled jars classpath in the manifest file
-    String manifestFile = "$stagingDir/META-INF/MANIFEST.MF"
+    String manifestFile = getDefaultManifestFileName()
     def classPathEntries = [ ".", "WEB-INF/classes" ]
     libDir.eachFileMatch(~/.*\.jar/) { classPathEntries << "WEB-INF/lib/${it.name}" }
     def classPath = classPathEntries.join(',')
@@ -530,10 +547,7 @@ target(skinnyWar: "Generates a skinny war") {
     // TODO: generate geronimo-web.xml file here
 
     // Create the war file
-    def warFile = new File(warName)
-    def dir = warFile.parentFile
-    if (!dir.exists()) ant.mkdir(dir:dir)
-        ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile)
+    generateWarArchive( manifestFile )
 
     // Remove staging dir
     cleanUpAfterWar()
