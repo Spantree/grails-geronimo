@@ -4,6 +4,7 @@ import groovy.xml.MarkupBuilder
 import grails.util.BuildSettings
 import grails.util.Metadata
 import org.codehaus.groovy.grails.resolve.IvyDependencyManager
+import org.codehaus.groovy.grails.commons.ConfigurationHolder as grailsConfigHolder
 
 // Includes
 
@@ -468,7 +469,7 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
     // Create the geronimo-web.xml file
     generateGeronimoWebXml(
         [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
-          groupId : "org.apache.geronimo.plugins",
+          groupId : grailsConfigHolder.config.grails.project.groupId,
           artifactId : grailsAppName,
           version : metadata.getApplicationVersion(),
           packaging : "war",
