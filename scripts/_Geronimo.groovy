@@ -44,16 +44,6 @@ def mavenSettings = [
     groupId : 'org.apache.geronimo.plugins'
 ]
 
-// TODO: This needs to be either read from a commandline or some sort of config - is it okay here?
-// Application information used for geronimo deployment
-def geronimoAppSettings = [
-    groupId : "org.apache.geronimo.plugins",
-    artifactId : "unknown",
-    version : "0.1",
-    packaging: "war",
-    contextRoot: "/offset"
-]
-
 // Classes
 
 // A class for storing info on a single dependency
@@ -478,11 +468,11 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
     // Create the geronimo-web.xml file
     generateGeronimoWebXml(
         [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
-          groupId : geronimoAppSettings.groupId,
-          artifactId : geronimoAppSettings.artifactId,
-          version : geronimoAppSettings.version,
-          packaging : geronimoAppSettings.packaging,
-          contextRoot : geronimoAppSettings.contextRoot ] 
+          groupId : "org.apache.geronimo.plugins",
+          artifactId : grailsAppName,
+          version : metadata.getApplicationVersion(),
+          packaging : "war",
+          contextRoot : grailsAppName ] 
     )
     
     String manifestFile = "$stagingDir/META-INF/MANIFEST.MF"
