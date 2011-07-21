@@ -19,11 +19,15 @@ includeTargets << grailsScript("_GrailsWar")
 // This defines which configurations we're interested in
 def runtimeConfigurations = ["runtime", "compile"]
 
-// A list of core runtime dependencies
-def coreDependencies
+// The geronimo module for grails-core
+def coreGeronimoModule
+
+// The geronimo module for all plugins
+// Note: module is in form
+def pluginGeronimoModules
 
 // A map from plugin name -> map [ modules:[list of runtime Dependency objects] libs:[jar names] ]
-def pluginDependencies
+//def pluginDependencies
 
 // A list of runtime dependencies for this application
 def appDependencies
@@ -42,10 +46,32 @@ def mappedMavenGroupAndArtifactIds = [
 // Global maven settings
 def mavenSettings = [
     geronimoVersion : '2.1.7',
-    groupId : 'org.apache.geronimo.plugins'
+    groupId : 'org.apache.geronimo.plugins',
+    baseDir : 'target/geronimo',
+    packaging : 'car'
 ]
 
 // Classes
+
+class GeronimoModule {
+   // Stores the organisation that created the artifact
+    String groupId
+    // The 'artefact' id
+    String artifactId
+    // The version number
+    String version
+    // How this module is packaged (e.g - 'jar')
+    String packaging
+    // List of dependencies
+    def dependencies
+    // List of libraries included with this module
+    def libs
+    
+    // Returns string description for maven pom
+    String getMavenName() {
+        "Geronimo Plugins :: Geronimo ${this.artifactId} Plugin"
+    }
+}
 
 // A class for storing info on a single dependency
 class Dependency {
@@ -58,20 +84,14 @@ class Dependency {
     String version
     // How this dependency is packaged (e.g - 'jar')
     String packaging
-    // The ivy file specifying this dependency (may be null)
-    File ivyFile
-    // The packages [jar] files that make up this artifact (may be null)
-    File[] packages
 
     // Extract dependency information from an Ivy file     
-    void setIvyFile(File ivyFile) {
-        this.@ivyFile = ivyFile
+    void initFromIvyFile(File ivyFile) {
         def ivy = new XmlParser().parse(ivyFile)
         def info = ivy.info[0]
         this.groupId = info.@organisation
         this.artifactId = info.@module
         this.version = info.@revision
-        // println ivy.publications.artifact
         this.packaging = ivy.publications.artifact.find { it.@conf in ['master', 'default'] }?.@type
     }
 
@@ -120,72 +140,101 @@ List getDependencySetDifference( def dependencyListA, def dependencyListB ) {
     }
 }
 
-// Extracts grails core runtime dependencies
-getCoreDependencies = {
-    if ( !coreDependencies ) {
-        Metadata metadata = Metadata.current
-        def appName = metadata.getApplicationName() ?: "grails"
-        def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
+// Initializes the grails-core geronimo module
+initCoreGeronimoModule = {
+    // Initialize module metadata
+    coreGeronimoModule = new GeronimoModule()
+    coreGeronimoModule.with {
+        groupId = mavenSettings.groupId    
+        artifactId = 'grails-core'
+        version = grailsSettings.grailsVersion  
+        packaging = mavenSettings.packaging
+        dependencies = []
+        libs = []
+    }
 
-        BuildSettings dummyBuildSettings = new BuildSettings()
-        IvyDependencyManager defaultDependencyManager = new IvyDependencyManager(appName, appVersion, dummyBuildSettings, metadata)                                   
-       
-        Closure defaultDependencies = defaultDependencyManager.getDefaultDependencies( grailsSettings.grailsVersion )
-        defaultDependencyManager.parseDependencies( defaultDependencies )
+    // Determine module dependencies
+    Metadata metadata = Metadata.current
+    def appName = metadata.getApplicationName() ?: "grails"
+    def appVersion = metadata.getApplicationVersion() ?: grailsSettings.grailsVersion
 
-        coreDependencies = []
-        defaultDependencyManager.moduleDescriptor.dependencies.each {
-            if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) { 
-                coreDependencies << createDependencyFromDependencyDescriptor( it )
-            }
+    BuildSettings dummyBuildSettings = new BuildSettings()
+    IvyDependencyManager defaultDependencyManager = new IvyDependencyManager(appName, appVersion, dummyBuildSettings, metadata)                                   
+   
+    Closure defaultDependencies = defaultDependencyManager.getDefaultDependencies( grailsSettings.grailsVersion )
+    defaultDependencyManager.parseDependencies( defaultDependencies )
+
+    defaultDependencyManager.moduleDescriptor.dependencies.each {
+        if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) { 
+            coreGeronimoModule.dependencies << createDependencyFromDependencyDescriptor( it )
         }
     }
-    return coreDependencies
+}
+
+// Returns data structure with all information necessary to generate and deploy the core geronimo car
+getCoreGeronimoModule = {
+   if ( !coreGeronimoModule )
+        initCoreGeronimoModule()
+    return coreGeronimoModule
+}
+
+// Initializes a map from plugin name -> plugin geronimo module
+initPluginGeronimoModules = {
+    Metadata metadata = Metadata.current
+    def appName = metadata.applicationName ?: "grails"
+    def appVersion = metadata.applicationVersion ?: grailsSettings.grailsVersion
+
+    pluginGeronimoModules = []
+
+    pluginSettings.pluginInfos.each {
+        IvyDependencyManager dependencyManager = new IvyDependencyManager( appName, appVersion, grailsSettings, metadata )
+        dependencyManager.moduleDescriptor = dependencyManager.createModuleDescriptor()
+        def callable = grailsSettings.pluginDependencyHandler( dependencyManager )
+        callable.call(new File("${it.pluginDir.file.canonicalPath}"))
+
+        def pluginInfo = it
+        pluginGeronimoModule = new GeronimoModule()
+        pluginGeronimoModule.with {
+            groupId = mavenSettings.groupId
+            artifactId = "grails-${pluginInfo.name}"
+            version = "${pluginInfo.version}"
+            packaging = mavenSettings.packaging
+            dependencies = []
+            libs = []
+        }
+
+        dependencyManager.moduleDescriptor.dependencies.each {
+            if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) {
+                pluginGeronimoModule.dependencies << createDependencyFromDependencyDescriptor( it )
+            }
+        }
+
+        def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar") }
+        pluginJars.each {
+            pluginGeronimoModule.libs << it
+        }
+
+        pluginGeronimoModules << pluginGeronimoModule
+    }
 }
 
 // Extracts runtime dependencies for all installed plugins
-getPluginDependencies = {
-    if (!pluginDependencies) {
-        Metadata metadata = Metadata.current
-        def appName = metadata.applicationName ?: "grails"
-        def appVersion = metadata.applicationVersion ?: grailsSettings.grailsVersion
-
-        pluginDependencies = [:]
-
-        pluginSettings.pluginInfos.each {
-            IvyDependencyManager dependencyManager = new IvyDependencyManager( appName, appVersion, grailsSettings, metadata )
-            dependencyManager.moduleDescriptor = dependencyManager.createModuleDescriptor()
-            def callable = grailsSettings.pluginDependencyHandler( dependencyManager )
-            callable.call(new File("${it.pluginDir.file.canonicalPath}"))
-
-            def currentPluginName = it.name
-            pluginDependencies[ currentPluginName ] = [ modules:[], libs:[] ] 
-            
-            dependencyManager.moduleDescriptor.dependencies.each {
-                if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) {
-                    pluginDependencies[ currentPluginName ].modules << createDependencyFromDependencyDescriptor( it )
-                }
-            }
-
-            def pluginJars = new File("${it.pluginDir.file.canonicalPath}/lib").listFiles().findAll { it.name.endsWith(".jar") }
-            pluginJars.each {
-                pluginDependencies[ currentPluginName ].libs << it
-            }
-        }
-    }
-    return pluginDependencies
+getPluginGeronimoModules = {
+    if (!pluginGeronimoModules)
+        initPluginGeronimoModules()
+    return pluginGeronimoModules
 }
 
-// Extracts application runtime information and associated Ivy files
-getAppDependencyIvyFileList = {
+// Extracts application runtime information
+getAppDependencies = {
     if ( !appDependencies ) {
         appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-            def d = new Dependency(packages: [jar])
+            def d = new Dependency()
             def ivyBase = jar.parentFile.parentFile
             ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
                 def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
                 if(jar.name ==~ ".*${version}.*") {
-                    d.ivyFile = ivyFile
+                    d.initFromIvyFile( ivyFile )
                 }
             }
             dependencies << d
@@ -197,11 +246,11 @@ getAppDependencyIvyFileList = {
 getSkinnyAppDependencies = {
     if ( !skinnyAppDependencies ) {
         // Remove core dependencies
-        skinnyAppDependencies = getDependencySetDifference( getAppDependencyIvyFileList(), getCoreDependencies() )
+        skinnyAppDependencies = getDependencySetDifference( getAppDependencies(), getCoreGeronimoModule().dependencies )
       
         // Remove plugin dependencies
-        getPluginDependencies().each {
-                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.value.modules )               
+        getPluginGeronimoModules().each {
+                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.dependencies )               
         }
     }
     return skinnyAppDependencies
@@ -260,10 +309,7 @@ void generateGeronimoWebXml( def args ) {
 //      xml:(markupBuilder), - the markup builder used for generating the xml
 //      mappedMavenGroupAndArtifactIds:(map) - maps ivy group and artifact ids to maven ids
 //      geronimoVersion:(string) - the version of geronimo to use
-//      groupId:(string), - the group id for this pom
-//      artifactId:(string), - the artifact id for this pom/car
-//      name:(string), - the name/short description for this pom
-//      dependencies:(list) - the list of dependencies to include within the pom for building with maven
+//      geronimoModule: - a module containing metadata such as artifact id, group id, and dependencies
 void generatePomXml( def args ) {
     args.xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
         modelVersion('4.0.0')
@@ -272,11 +318,11 @@ void generatePomXml( def args ) {
             artifactId('project-config')
             version('1.5')
         }
-        groupId(args.groupId)
-        artifactId(args.artifactId)
-        name(args.name)
-        packaging('car')
-        version(grailsVersion)
+        groupId(args.geronimoModule.groupId)
+        artifactId(args.geronimoModule.artifactId)
+        name(args.geronimoModule.mavenName)
+        packaging(args.geronimoModule.packaging)
+        version(args.geronimoModule.version)
         properties() {
             geronimoVersion(args.geronimoVersion)
             projectName(args.name)
@@ -303,7 +349,7 @@ void generatePomXml( def args ) {
                 type('car')
                 scope('provided')
             }
-            args.dependencies.each { dep ->
+            args.geronimoModule.dependencies.each { dep ->
                 dependency() {
                     groupId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).groupId)
                     artifactId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).artifactId)
@@ -349,18 +395,15 @@ void generatePlanXml( def xml ) {
     }
 }
 
-void generatePomAndPlanXml( def mappedMavenGroupAndArtifactIds, def mavenSettings, def basePath, def artifactId, def name, def dependencies ) {
-    def artifactRootPath = "$basePath/$artifactId"
+void generatePomAndPlanXml( def mappedMavenGroupAndArtifactIds, def mavenSettings, def geronimoModule ) {
+    def artifactRootPath = "${mavenSettings.baseDir}/${geronimoModule.artifactId}"
     new File( "$artifactRootPath/" ).mkdirs()
     def pomWriter = new FileWriter("$artifactRootPath/pom.xml")
     generatePomXml( 
         [ 'xml' : (new MarkupBuilder(pomWriter)), 
-          'mappedMavenGroupAndArtifactIds' : mappedMavenGroupAndArtifactIds, 
-          'groupId' : mavenSettings.groupId,
-          'geronimoVersion' : mavenSettings.geronimoVersion,
-          'artifactId' : artifactId,
-          'name' : name,
-          'dependencies' : dependencies ]
+          'mappedMavenGroupAndArtifactIds' : mappedMavenGroupAndArtifactIds,
+          'geronimoVersion' : mavenSettings.geronimoVersion, 
+          'geronimoModule' : geronimoModule ]
     )
     
     new File("$artifactRootPath/src/main/plan/").mkdirs()
@@ -394,7 +437,6 @@ getDefaultManifestFileName = {
 generateExplodedWar = { 
     // Flag that we should not delete the war staging directory
     buildExplodedWar = true
-    
     // Build the exploded war (does not actually generate a war file)
     war()
 }
@@ -413,19 +455,19 @@ generateWarArchive = { manifestFile ->
 target(listCoreDependencies: "Display a list of core/default dependencies") {
     depends(compile)
     println "Retrieving core dependencies"
-    getCoreDependencies().each {
+    getCoreGeronimoModule().dependencies.each {
         println "- $it"
     }
 }
 
 target(listPluginDependencies: "Display a list of dependencies for each plugin") {
     println "Retrieving plugin dependencies"
-    getPluginDependencies().each {
-        println "-------------------\nPLUGIN: ${it.key}\n-------------------"         
-        it.value.modules.each {
+    getPluginGeronimoModules().each {
+        println "-------------------\nPLUGIN: ${it.artifactId}\n-------------------"         
+        it.dependencies.each {
             println "- $it"
         }
-        it.value.libs.each {
+        it.libs.each {
             println "[LIB] - $it"
         }
     }
@@ -433,7 +475,7 @@ target(listPluginDependencies: "Display a list of dependencies for each plugin")
 
 target(listAppDependencies: "Display a list of Ivy dependencies for this Grails project") {
     println "Retrieving app dependencies"
-    getAppDependencyIvyFileList().each {
+    getAppDependencies().each {
         println "- $it"
     }
 }
@@ -452,31 +494,24 @@ target(stageCore: "Generates Maven pom.xml and plan.xml files for grails-core wh
     generatePomAndPlanXml(
         mappedMavenGroupAndArtifactIds,
         mavenSettings,
-        'target/geronimo',
-        'grails-core',
-        'Geronimo Plugins :: Geronimo Grails Core Plugin',
-        getCoreDependencies()
+        getCoreGeronimoModule()
     )
 }
 
 target(stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
-    getPluginDependencies().each {
-        def artifactName ="grails-${it.key}"
-        println "Generating Maven XML for ${artifactName}"
+    getPluginGeronimoModules().each {
+        println "Generating Maven XML for ${it.artifactId}"
         generatePomAndPlanXml(
             mappedMavenGroupAndArtifactIds,
             mavenSettings,
-            'target/geronimo',
-            artifactName,
-            "Geronimo Plugins :: Geronimo ${it.key} Plugin",
-            it.value.modules
+            it
         )
     }
 }
 
 target(generateCars: "Generates car files") {
     depends(stageCore, stagePlugins)
-    new File("target/geronimo").eachDir { File pomBase ->
+    new File(mavenSettings.baseDir).eachDir { File pomBase ->
         println "Packaging car from ${pomBase}/pom.xml"
         def proc = "mvn package".execute([], pomBase)
         System.out << proc.text
@@ -486,13 +521,8 @@ target(generateCars: "Generates car files") {
 
 target(fatWar: "Generates a fat war suitable for geronimo deployment") {   
     generateExplodedWar()
-
-    // Create the geronimo-web.xml file
     generateGeronimoWebXml( getDefaultGeronimoWebXmlParams() )
-    
     generateWarArchive()
-
-    // Remove staging dir
     cleanUpAfterWar()       
 }
 
@@ -508,9 +538,9 @@ target(skinnyWar: "Generates a skinny war") {
     libDir.eachFileMatch(~/.*\.jar/) {
         // Determine if jar file is a core or plugin dependency
         def jarName = it.name
-        def isCoreDep = getCoreDependencies().any { it.packagedName == jarName }
-        def isPluginDep =  isCoreDep ? false : getPluginDependencies().any {
-               it.value.modules.any { it.packagedName == jarName } || it.value.libs.any { it.name == jarName }
+        def isCoreDep = getCoreGeronimoModule().dependencies.any { it.packagedName == jarName }
+        def isPluginDep =  isCoreDep ? false : getPluginGeronimoModules().any { plugin ->
+               plugin.dependencies.any { it.packagedName == jarName } || plugin.libs.any { it.name == jarName }
         }
 
         if ( isCoreDep || isPluginDep )
