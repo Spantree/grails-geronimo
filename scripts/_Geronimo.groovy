@@ -281,10 +281,12 @@ void generateGeronimoWebXml( def args ) {
             if ( args.dependencies ) {
                 dependencies {
                     args.dependencies.each { dep ->
-                        groupId( dep.groupId )
-                        artifactId( dep.artifactId )
-                        version( dep.version )
-                        type( dep.packaging )
+                        dependency() {
+                            groupId( dep.groupId )
+                            artifactId( dep.artifactId )
+                            version( dep.version )
+                            type( dep.packaging )
+                        }
                     }
                 }
             }
@@ -561,7 +563,8 @@ target(skinnyWar: "Generates a skinny war") {
         attribute(name:"Bundle-ClassPath",value:"${classPath}")
     }
 
-    // TODO: generate geronimo-web.xml file here
+    // Generate geronimo-web.xml
+    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getPluginGeronimoModules() + getCoreGeronimoModule() ) )    
 
     // Create the war file
     generateWarArchive( manifestFile )
