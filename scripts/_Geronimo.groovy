@@ -439,7 +439,6 @@ generateWarArchive = { manifestFile ->
 // Targets for listing dependencies
 
 target(listCoreDependencies: "Display a list of core/default dependencies") {
-    depends(compile)
     println "Retrieving core dependencies"
     getCoreGeronimoModule().dependencies.each {
         println "- $it"
@@ -513,7 +512,10 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
 }
 
 target(skinnyWar: "Generates a skinny war") {
-    depends(generateCars)
+    depends(parseArguments)
+
+    if ( !argsMap."no-geronimo-cars" )
+        generateCars()
     
     generateExplodedWar()
 
