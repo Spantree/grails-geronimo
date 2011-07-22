@@ -40,7 +40,7 @@ def skinnyAppDependencies
 def mappedMavenGroupAndArtifactIds = [
 	"apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
 	"org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
-	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-web" ]
+	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-webmvc" ]
 ]
 
 // Global maven settings
@@ -102,17 +102,17 @@ class Dependency {
     String getPackagedName() {
         "${artifactId}-${version}.${packaging}"
     }
-
-    // Returns Maven mapped group and artifact identifiers
-    // TODO: This should use non-processed keys!
-    Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
-        def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
-        def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
-        return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
-    }
 }
 
 // Utilities for extracting runtime dependencies
+
+// Returns Maven mapped group and artifact identifiers
+// TODO: This should use non-processed keys!
+Map getMavenGroupAndArtifactIds( def dep, def mappedMavenGroupAndArtifactIds ) {
+    def mavenProcessedArtifactId = dep.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+    def mavenKey = dep.groupId + ":" + mavenProcessedArtifactId
+    return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : dep.groupId, artifactId : mavenProcessedArtifactId ]
+}
 
 // Returns true if module configuration is found within our configurations list
 boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurations ) {
@@ -282,8 +282,8 @@ void generateGeronimoWebXml( def args ) {
                 dependencies {
                     args.dependencies.each { dep ->
                         dependency() {
-                            groupId( dep.groupId )
-                            artifactId( dep.artifactId )
+                            groupId( getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).groupId )
+                            artifactId( getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).artifactId )
                             version( dep.version )
                             type( dep.packaging )
                         }
@@ -291,16 +291,18 @@ void generateGeronimoWebXml( def args ) {
                 }
             }
 
-            'hidden-classes' {
+            /*'hidden-classes' {
                 filter('org.springframework')
                 filter('org.apache.cxf')
                 filter('org.apache.commons')
                 filter('org.codehaus.groovy')
-            }
+            }*/
             'non-overridable-classes' {
                 filter('javax.transaction')
             }
+            /*
             'inverse-classloading'()
+            */
         }
         'context-root'(args.contextRoot)
     }
@@ -353,8 +355,8 @@ void generatePomXml( def args ) {
             }
             args.geronimoModule.dependencies.each { dep ->
                 dependency() {
-                    groupId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).groupId)
-                    artifactId(dep.getMavenGroupAndArtifactIds(args.mappedMavenGroupAndArtifactIds).artifactId)
+                    groupId(getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).groupId)
+                    artifactId(getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).artifactId)
                     version(dep.version)
                     type(dep.packaging)
                 }
@@ -376,6 +378,12 @@ void generatePomXml( def args ) {
                         useMavenDependencies() {
                             value('true')
                             includeVersion('true')
+                        }
+                        commonInstance {
+                            "plugin-artifact" {
+                                "source-repository"("~/.m2/repository/")
+                                "source-repository"("http://repo1.maven.org/maven2/")
+                            }
                         }
                     }
                 }
@@ -424,9 +432,11 @@ getDefaultGeronimoWebXmlParams = { dependencies ->
       packaging : "war",
       contextRoot : grailsAppName ]
 
-    if ( dependencies )
+    if ( dependencies ) {
         xmlParams.dependencies = dependencies
- 
+        xmlParams.mappedMavenGroupAndArtifactIds = mappedMavenGroupAndArtifactIds
+    }
+
     return xmlParams
 }
 
@@ -563,8 +573,8 @@ target(skinnyWar: "Generates a skinny war") {
         attribute(name:"Bundle-ClassPath",value:"${classPath}")
     }
 
-    // Generate geronimo-web.xml
-    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getPluginGeronimoModules() + getCoreGeronimoModule() ) )    
+    // Generate geronimo-web.xml    
+    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getAppDependencies() ) )
 
     // Create the war file
     generateWarArchive( manifestFile )
