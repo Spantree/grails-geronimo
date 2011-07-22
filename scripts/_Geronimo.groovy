@@ -53,7 +53,8 @@ def mavenSettings = [
 
 // Classes
 
-class GeronimoModule {
+// Stores metadata on a module
+class Module {
    // Stores the organisation that created the artifact
     String groupId
     // The 'artefact' id
@@ -62,11 +63,22 @@ class GeronimoModule {
     String version
     // How this module is packaged (e.g - 'jar')
     String packaging
+
+    String toString() {
+        "$groupId:$artifactId:$version:$packaging"
+    }
+
+    int hashCode() {
+        return this.toString().hashCode()
+    }
+}
+
+// A high level geronimo war or plugin car with it's associated dependencies and libs
+class GeronimoModule extends Module {
     // List of dependencies
     def dependencies
     // List of libraries included with this module
     def libs
-    
     // Returns string description for maven pom
     String getMavenName() {
         "Geronimo Plugins :: Geronimo ${this.artifactId} Plugin"
@@ -74,19 +86,9 @@ class GeronimoModule {
 }
 
 // A class for storing info on a single dependency
-class Dependency {
-
-    // Stores the organisation that created the artifact
-    String groupId
-    // The 'artefact' id
-    String artifactId
-    // The version number
-    String version
-    // How this dependency is packaged (e.g - 'jar')
-    String packaging
-
+class DependencyModule extends Module {
     // Extract dependency information from an Ivy file     
-    void initFromIvyFile(File ivyFile) {
+    void setIvyFile(File ivyFile) {
         def ivy = new XmlParser().parse(ivyFile)
         def info = ivy.info[0]
         this.groupId = info.@organisation
@@ -94,25 +96,27 @@ class Dependency {
         this.version = info.@revision
         this.packaging = ivy.publications.artifact.find { it.@conf in ['master', 'default'] }?.@type
     }
-
-    String toString() {
-        "$groupId:$artifactId:$version:$packaging"
+    // Extracts dependency information from an Ivy/Spring Dependency Descriptor
+    void setDependencyDescriptor(def dd) {
+        this.groupId = dd.dependencyRevisionId.organisation
+        this.artifactId = dd.dependencyRevisionId.name
+        this.version = dd.dependencyRevisionId.revision
+        this.packaging = "jar"
     }
-
+    // Returns the name of jar file representing this dependency
     String getPackagedName() {
         "${artifactId}-${version}.${packaging}"
+    }
+    // Returns Maven mapped group and artifact identifiers
+    // TODO: This should use non-processed keys!
+    Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
+        def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+        def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
+        return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
     }
 }
 
 // Utilities for extracting runtime dependencies
-
-// Returns Maven mapped group and artifact identifiers
-// TODO: This should use non-processed keys!
-Map getMavenGroupAndArtifactIds( def dep, def mappedMavenGroupAndArtifactIds ) {
-    def mavenProcessedArtifactId = dep.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
-    def mavenKey = dep.groupId + ":" + mavenProcessedArtifactId
-    return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : dep.groupId, artifactId : mavenProcessedArtifactId ]
-}
 
 // Returns true if module configuration is found within our configurations list
 boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurations ) {
@@ -121,37 +125,17 @@ boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurati
     }
 }
 
-// Extracts dependency information from a parameter Spring DependencyDescriptor
-Dependency createDependencyFromDependencyDescriptor( def dd ) {
-    def d = new Dependency()
-    d.groupId = dd.dependencyRevisionId.organisation
-    d.artifactId = dd.dependencyRevisionId.name
-    d.version = dd.dependencyRevisionId.revision
-    d.packaging = "jar"
-    return d
-}
-
-// Performs A - B set operation
-List getDependencySetDifference( def dependencyListA, def dependencyListB ) {
-   dependencyListA.findAll {
-        aDep -> !dependencyListB.any {
-            bDep -> (bDep as String) == (aDep as String)    
-        } 
-    }
-}
-
 // Initializes the grails-core geronimo module
 initCoreGeronimoModule = {
     // Initialize module metadata
-    coreGeronimoModule = new GeronimoModule()
-    coreGeronimoModule.with {
-        groupId = mavenSettings.groupId    
-        artifactId = 'grails-core'
-        version = grailsSettings.grailsVersion  
-        packaging = mavenSettings.packaging
-        dependencies = []
-        libs = []
-    }
+    coreGeronimoModule = new GeronimoModule(
+        groupId : mavenSettings.groupId,    
+        artifactId : 'grails-core',
+        version : grailsSettings.grailsVersion,  
+        packaging : mavenSettings.packaging,
+        dependencies : [],
+        libs : []
+    )
 
     // Determine module dependencies
     Metadata metadata = Metadata.current
@@ -166,7 +150,7 @@ initCoreGeronimoModule = {
 
     defaultDependencyManager.moduleDescriptor.dependencies.each {
         if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) { 
-            coreGeronimoModule.dependencies << createDependencyFromDependencyDescriptor( it )
+            coreGeronimoModule.dependencies << new DependencyModule( dependencyDescriptor : it )
         }
     }
 }
@@ -193,19 +177,18 @@ initPluginGeronimoModules = {
         callable.call(new File("${it.pluginDir.file.canonicalPath}"))
 
         def pluginInfo = it
-        pluginGeronimoModule = new GeronimoModule()
-        pluginGeronimoModule.with {
-            groupId = mavenSettings.groupId
-            artifactId = "grails-${pluginInfo.name}"
-            version = "${pluginInfo.version}"
-            packaging = mavenSettings.packaging
-            dependencies = []
-            libs = []
-        }
+        pluginGeronimoModule = new GeronimoModule(
+            groupId : mavenSettings.groupId,
+            artifactId : "grails-${pluginInfo.name}",
+            version : "${pluginInfo.version}",
+            packaging : mavenSettings.packaging,
+            dependencies : [],
+            libs : []
+        )
 
         dependencyManager.moduleDescriptor.dependencies.each {
             if ( isAllowedConfiguration( it.moduleConfigurations, runtimeConfigurations ) ) {
-                pluginGeronimoModule.dependencies << createDependencyFromDependencyDescriptor( it )
+                pluginGeronimoModule.dependencies << new DependencyModule( dependencyDescriptor : it )
             }
         }
 
@@ -229,12 +212,12 @@ getPluginGeronimoModules = {
 getAppDependencies = {
     if ( !appDependencies ) {
         appDependencies = grailsSettings.runtimeDependencies.inject([]) { dependencies, jar ->
-            def d = new Dependency()
+            def d = new DependencyModule()
             def ivyBase = jar.parentFile.parentFile
             ivyBase.eachFileMatch(~/^ivy-.*\.xml$/) { ivyFile ->
                 def version = (ivyFile.name =~ /^ivy-(.*)\.xml/)[0][1]
                 if(jar.name ==~ ".*${version}.*") {
-                    d.initFromIvyFile( ivyFile )
+                    d.setIvyFile( ivyFile )
                 }
             }
             dependencies << d
@@ -246,11 +229,11 @@ getAppDependencies = {
 getSkinnyAppDependencies = {
     if ( !skinnyAppDependencies ) {
         // Remove core dependencies
-        skinnyAppDependencies = getDependencySetDifference( getAppDependencies(), getCoreGeronimoModule().dependencies )
+        skinnyAppDependencies = getAppDependencies() - getCoreGeronimoModule().dependencies
       
         // Remove plugin dependencies
         getPluginGeronimoModules().each {
-                skinnyAppDependencies = getDependencySetDifference( skinnyAppDependencies, it.dependencies )               
+            skinnyAppDependencies = skinnyAppDependencies - it.dependencies              
         }
     }
     return skinnyAppDependencies
@@ -282,8 +265,8 @@ void generateGeronimoWebXml( def args ) {
                 dependencies {
                     args.dependencies.each { dep ->
                         dependency() {
-                            groupId( getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).groupId )
-                            artifactId( getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).artifactId )
+                            groupId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).groupId )
+                            artifactId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).artifactId )
                             version( dep.version )
                             type( dep.packaging )
                         }
@@ -291,18 +274,9 @@ void generateGeronimoWebXml( def args ) {
                 }
             }
 
-            /*'hidden-classes' {
-                filter('org.springframework')
-                filter('org.apache.cxf')
-                filter('org.apache.commons')
-                filter('org.codehaus.groovy')
-            }*/
             'non-overridable-classes' {
                 filter('javax.transaction')
             }
-            /*
-            'inverse-classloading'()
-            */
         }
         'context-root'(args.contextRoot)
     }
@@ -355,10 +329,10 @@ void generatePomXml( def args ) {
             }
             args.geronimoModule.dependencies.each { dep ->
                 dependency() {
-                    groupId(getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).groupId)
-                    artifactId(getMavenGroupAndArtifactIds(dep, args.mappedMavenGroupAndArtifactIds).artifactId)
-                    version(dep.version)
-                    type(dep.packaging)
+                    groupId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).groupId )
+                    artifactId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).artifactId )
+                    version( dep.version )
+                    type( dep.packaging )
                 }
             }
         }
@@ -410,10 +384,10 @@ void generatePomAndPlanXml( def mappedMavenGroupAndArtifactIds, def mavenSetting
     new File( "$artifactRootPath/" ).mkdirs()
     def pomWriter = new FileWriter("$artifactRootPath/pom.xml")
     generatePomXml( 
-        [ 'xml' : (new MarkupBuilder(pomWriter)), 
-          'mappedMavenGroupAndArtifactIds' : mappedMavenGroupAndArtifactIds,
-          'geronimoVersion' : mavenSettings.geronimoVersion, 
-          'geronimoModule' : geronimoModule ]
+        [ xml : (new MarkupBuilder(pomWriter)), 
+          mappedMavenGroupAndArtifactIds : mappedMavenGroupAndArtifactIds,
+          geronimoVersion : mavenSettings.geronimoVersion, 
+          geronimoModule : geronimoModule ]
     )
     
     new File("$artifactRootPath/src/main/plan/").mkdirs()
