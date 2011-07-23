@@ -22,12 +22,8 @@ def runtimeConfigurations = ["runtime", "compile"]
 // The geronimo module for grails-core
 def coreGeronimoModule
 
-// The geronimo module for all plugins
-// Note: module is in form
+// The geronimo modules for all plugins
 def pluginGeronimoModules
-
-// A map from plugin name -> map [ modules:[list of runtime Dependency objects] libs:[jar names] ]
-//def pluginDependencies
 
 // A list of runtime dependencies for this application
 def appDependencies
