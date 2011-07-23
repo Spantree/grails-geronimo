@@ -564,7 +564,7 @@ target(debugTest: "Test code goes here") {
 // Main target
 
 target(main: "The description of the script goes here!") {
-     depends(listDependencies, generateCore)
+     depends(listAppDependencies)
 }
 
 setDefaultTarget(main)
