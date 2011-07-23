@@ -11,11 +11,11 @@ class GeronimoGrailsPlugin {
     ]
 
     // TODO Fill in these fields
-    def author = "Cedric Hurst"
-    def authorEmail = "cedric@spantree.net"
+    def author = "Cedric Hurst, Alan Perez-Rathke"
+    def authorEmail = "cedric@spantree.net, alan@spantree.net"
     def title = "This plugin is designed to generate Geronimo deployment plans and 'skinny' WARs from a given Grails project"
-    def description = '''\\
-Brief description of the plugin.
+    def description = '''
+Geronimo-Grails plugin allows creation of skinny or fat wars for deployment on Geronimo.  Fat wars are the same as those produced from the grails war bundling with addition of a geronimo-web.xml configuration.  Skinny wars are stripped of all grails-core and plugin dependencies (jars).  Instead, the core and plugin dependencies are bundled as geronimo plugin car files.  They can be deployed independently of the skinny war and reduce bloat by avoiding jar duplication.
 '''
 
     // URL to the plugin's documentation
