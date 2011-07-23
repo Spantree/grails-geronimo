@@ -517,9 +517,9 @@ target(deployCars: "Deploys car plugins into local geronimo server") {
     new File(mavenSettings.baseDir).eachDir { File pluginBaseDir ->
         def pluginCarDir = new File( "${pluginBaseDir}/target" )        
         pluginCarDir.eachFileMatch(~/.*\.car/) {
-            def command = "${argsMap.'local-geronimo-home'}/bin/gsh -c \"deploy/install-plugin ${it.absolutePath} -u $user -w $pass\""
-            println "Executing $command"
-            def proc = command.execute()
+            def commandList = ["${argsMap.'local-geronimo-home'}/bin/gsh", "-c", "deploy/install-plugin ${it.absolutePath} -u $user -w $pass"]
+            println "Executing $commandList"
+            def proc = commandList.execute()
             proc.waitFor()
             System.out << proc.text            
             println "return code: ${proc.exitValue()}"
