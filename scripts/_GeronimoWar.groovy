@@ -1,4 +1,6 @@
-includeTargets << new File(geronimoPluginDir, "scripts/_Geronimo.groovy")
+includeTargets << grailsScript("_GrailsWar")
+
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoModules.groovy")
 includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoXml.groovy")
 
 // War utilities

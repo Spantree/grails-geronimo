@@ -1,4 +1,4 @@
-includeTargets << new File(geronimoPluginDir, "scripts/_Geronimo.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoModules.groovy")
 
 // Targets for listing dependencies
 

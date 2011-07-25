@@ -1,7 +1,7 @@
 import groovy.xml.MarkupBuilder
 import org.codehaus.groovy.grails.commons.ConfigurationHolder as grailsConfigHolder
 
-includeTargets << new File(geronimoPluginDir, "scripts/_Geronimo.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoModules.groovy")
 
 // Utilities for generating XML files
 
@@ -44,6 +44,23 @@ generateGeronimoWebXml = { args ->
         }
         'context-root'(args.contextRoot)
     }
+}
+
+// Returns an arguments map with the default parameters for generating geronimo-web.xml
+getDefaultGeronimoWebXmlParams = { dependencies ->
+    def xmlParams = [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
+      groupId : grailsConfigHolder.config.grails.project.groupId,
+      artifactId : grailsAppName,
+      version : metadata.getApplicationVersion(),
+      packaging : "war",
+      contextRoot : grailsAppName ]
+
+    if ( dependencies ) {
+        xmlParams.dependencies = dependencies
+        xmlParams.mappedMavenGroupAndArtifactIds = getMappedMavenGroupAndArtifactIds()
+    }
+
+    return xmlParams
 }
 
 // Populates a pom xml file for building a car
@@ -157,22 +174,5 @@ generatePomAndPlanXml = { geronimoModule ->
     new File("$artifactRootPath/src/main/plan/").mkdirs()
     def planWriter = new FileWriter("$artifactRootPath/src/main/plan/plan.xml")
     generatePlanXml(new MarkupBuilder(planWriter))
-}
-
-// Returns an arguments map with the default parameters for generating geronimo-web.xml
-getDefaultGeronimoWebXmlParams = { dependencies ->
-    def xmlParams = [ xml : (new MarkupBuilder(new FileWriter("${stagingDir}/WEB-INF/geronimo-web.xml"))),
-      groupId : grailsConfigHolder.config.grails.project.groupId,
-      artifactId : grailsAppName,
-      version : metadata.getApplicationVersion(),
-      packaging : "war",
-      contextRoot : grailsAppName ]
-
-    if ( dependencies ) {
-        xmlParams.dependencies = dependencies
-        xmlParams.mappedMavenGroupAndArtifactIds = getMappedMavenGroupAndArtifactIds()
-    }
-
-    return xmlParams
 }
 

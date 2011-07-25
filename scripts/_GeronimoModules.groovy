@@ -6,11 +6,7 @@ import org.codehaus.groovy.grails.resolve.IvyDependencyManager
 
 // Includes
 
-includeTargets << grailsScript("Init")
-includeTargets << grailsScript("_GrailsClean")
-includeTargets << grailsScript("_GrailsPackage")
 includeTargets << grailsScript("_GrailsPlugins")
-includeTargets << grailsScript("_GrailsWar")
 
 // Globals
 
@@ -254,3 +250,4 @@ target(main: "The description of the script goes here!") {
 }
 
 setDefaultTarget(main)
+
