@@ -1,3 +1,4 @@
-includeTargets << new File(geronimoPluginDir, "scripts/_Geronimo.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoWar.groovy")
+
 setDefaultTarget(stageCore)
 
