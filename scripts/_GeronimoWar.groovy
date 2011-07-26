@@ -65,21 +65,17 @@ target(generateCars: "Generates car files") {
 target(deployCars: "Deploys car plugins into local geronimo server") {
     depends(parseArguments)
 
-    if ( !argsMap."local-geronimo-home" ) {
-        println "error: missing non-optional arguments.\nusage: grails local-depoloy-cars -local-geronimo-home=<path> [-geronimo-u=<user>] [-geronimo-w=<pass>] [-no-geronimo-cars]"
-        return    
-    }
-
     if ( !argsMap."no-geronimo-cars" )
         generateCars()
 
-    def user = argsMap."geronimo-u" ?: "system"
-    def pass = argsMap."geronimo-w" ?: "manager"
+    def home = argsMap."geronimo-home" ?: getGeronimoSettings().home
+    def user = argsMap."geronimo-pass" ?: getGeronimoSettings().user
+    def pass = argsMap."geronimo-user" ?: getGeronimoSettings().pass
 
     new File(getMavenSettings().baseDir).eachDir { File pluginBaseDir ->
         def pluginCarDir = new File( "${pluginBaseDir}/target" )        
         pluginCarDir.eachFileMatch(~/.*\.car/) {
-            execGshCmd( argsMap.'local-geronimo-home', "deploy/install-plugin ${it.absolutePath} -u $user -w $pass" )
+            execGshCmd( home, "deploy/install-plugin ${it.absolutePath} -u $user -w $pass" )
         }
     }
 }
@@ -87,23 +83,19 @@ target(deployCars: "Deploys car plugins into local geronimo server") {
 target(deployWar: "Deploys war into local geronimo server") {
     depends(parseArguments)
 
-    if ( !argsMap."local-geronimo-home" ) {
-        println "error: missing non-optional arguments.\nusage: grails local-depoloy-cars -local-geronimo-home=<path> [-geronimo-u=<user>] [-geronimo-w=<pass>] [-no-geronimo-cars]"
-        return    
-    }
-
     if ( !argsMap."no-geronimo-war" )
         skinnyWar()
 
     if ( !argsMap."no-geronimo-deploy-cars" )
         deployCars()
 
-    def user = argsMap."geronimo-u" ?: "system"
-    def pass = argsMap."geronimo-w" ?: "manager"
+    def home = argsMap."geronimo-home" ?: getGeronimoSettings().home
+    def user = argsMap."geronimo-pass" ?: getGeronimoSettings().user
+    def pass = argsMap."geronimo-user" ?: getGeronimoSettings().pass
 
     // Based on: https://cwiki.apache.org/GMOxDOC21/gshell.html#GShell-DeployinganApplicationtoaServerInstance
     def warPath = new File("target/${grailsAppName}-${metadata.getApplicationVersion()}.war").absolutePath
-    execGshCmd( argsMap.'local-geronimo-home', "deploy/deploy ${warPath} -u $user -w $pass" )
+    execGshCmd( home, "deploy/deploy ${warPath} -u $user -w $pass" )
 }
 
 target(fatWar: "Generates a fat war suitable for geronimo deployment") {   

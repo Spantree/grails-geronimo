@@ -7,6 +7,7 @@ import org.codehaus.groovy.grails.resolve.IvyDependencyManager
 // Includes
 
 includeTargets << grailsScript("_GrailsPlugins")
+includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_GeronimoConfig.groovy")
 
 // Globals
 
@@ -24,30 +25,6 @@ def appDependencies
 
 // A list of all application dependencies minus core and plugin
 def skinnyAppDependencies
-
-// Maps a key ("group:artifact") to maven group and artifact ids
-// TODO: This probably needs to be set from a data file somewhere and the keys need to be ivy group and artifact names
-def mappedMavenGroupAndArtifactIds = [
-	"apache-taglibs:standard" : [ groupId : "taglibs", artifactId : "standard" ],
-	"org.springframework:spring-transaction" : [ groupId : "org.springframework", artifactId : "spring-tx" ],
-	"org.springframework:spring-web-servlet" : [ groupId : "org.springframework", artifactId : "spring-webmvc" ]
-]
-
-getMappedMavenGroupAndArtifactIds = {
-    return mappedMavenGroupAndArtifactIds
-}
-
-// Global maven settings
-def mavenSettings = [
-    geronimoVersion : '2.1.7',
-    groupId : 'org.apache.geronimo.plugins',
-    baseDir : 'target/geronimo',
-    packaging : 'car'
-]
-
-getMavenSettings = {
-    return mavenSettings
-}
 
 // Classes
 
@@ -106,11 +83,11 @@ class DependencyModule extends Module {
         "${artifactId}-${version}.${packaging}"
     }
     // Returns Maven mapped group and artifact identifiers
-    // TODO: This should use non-processed keys!
-    Map getMavenGroupAndArtifactIds( def mappedMavenGroupAndArtifactIds ) {
-        def mavenProcessedArtifactId = this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
-        def mavenKey = this.groupId + ":" + mavenProcessedArtifactId
-        return mappedMavenGroupAndArtifactIds[ mavenKey ] ?: [ groupId : this.groupId, artifactId : mavenProcessedArtifactId ]
+    Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
+        return ivyToMavenArtifactMap[ this.groupId + ":" + this.artifactId ] ?: [
+            groupId : this.groupId,
+            artifactId: this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
+        ]
     }
 }
 
@@ -127,10 +104,10 @@ boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurati
 initCoreGeronimoModule = {
     // Initialize module metadata
     coreGeronimoModule = new GeronimoModule(
-        groupId : mavenSettings.groupId,    
+        groupId : getMavenSettings().groupId,    
         artifactId : 'grails-core',
         version : grailsSettings.grailsVersion,  
-        packaging : mavenSettings.packaging,
+        packaging : getMavenSettings().packaging,
         dependencies : [],
         libs : []
     )
@@ -176,10 +153,10 @@ initPluginGeronimoModules = {
 
         def pluginInfo = it
         pluginGeronimoModule = new GeronimoModule(
-            groupId : mavenSettings.groupId,
+            groupId : getMavenSettings().groupId,
             artifactId : "grails-${pluginInfo.name}",
             version : "${pluginInfo.version}",
-            packaging : mavenSettings.packaging,
+            packaging : getMavenSettings().packaging,
             dependencies : [],
             libs : []
         )

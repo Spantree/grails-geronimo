@@ -29,8 +29,8 @@ generateGeronimoWebXml = { args ->
                 dependencies {
                     args.dependencies.each { dep ->
                         dependency() {
-                            groupId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).groupId )
-                            artifactId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).artifactId )
+                            groupId( dep.getMavenGroupAndArtifactIds( args.ivyToMavenArtifactMap ).groupId )
+                            artifactId( dep.getMavenGroupAndArtifactIds( args.ivyToMavenArtifactMap ).artifactId )
                             version( dep.version )
                             type( dep.packaging )
                         }
@@ -57,7 +57,7 @@ getDefaultGeronimoWebXmlParams = { dependencies ->
 
     if ( dependencies ) {
         xmlParams.dependencies = dependencies
-        xmlParams.mappedMavenGroupAndArtifactIds = getMappedMavenGroupAndArtifactIds()
+        xmlParams.ivyToMavenArtifactMap = getIvyToMavenArtifactMap()
     }
 
     return xmlParams
@@ -66,7 +66,7 @@ getDefaultGeronimoWebXmlParams = { dependencies ->
 // Populates a pom xml file for building a car
 // Takes an arguments map = [ 
 //      xml:(markupBuilder), - the markup builder used for generating the xml
-//      mappedMavenGroupAndArtifactIds:(map) - maps ivy group and artifact ids to maven ids
+//      ivyToMavenArtifactMap:(map) - maps ivy group and artifact ids to maven ids
 //      geronimoVersion:(string) - the version of geronimo to use
 //      geronimoModule: - a module containing metadata such as artifact id, group id, and dependencies
 void generatePomXml( def args ) {
@@ -110,8 +110,8 @@ void generatePomXml( def args ) {
             }
             args.geronimoModule.dependencies.each { dep ->
                 dependency() {
-                    groupId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).groupId )
-                    artifactId( dep.getMavenGroupAndArtifactIds( args.mappedMavenGroupAndArtifactIds ).artifactId )
+                    groupId( dep.getMavenGroupAndArtifactIds( args.ivyToMavenArtifactMap ).groupId )
+                    artifactId( dep.getMavenGroupAndArtifactIds( args.ivyToMavenArtifactMap ).artifactId )
                     version( dep.version )
                     type( dep.packaging )
                 }
@@ -166,7 +166,7 @@ generatePomAndPlanXml = { geronimoModule ->
     def pomWriter = new FileWriter("$artifactRootPath/pom.xml")
     generatePomXml( 
         [ xml : (new MarkupBuilder(pomWriter)), 
-          mappedMavenGroupAndArtifactIds : getMappedMavenGroupAndArtifactIds(),
+          ivyToMavenArtifactMap : getIvyToMavenArtifactMap(),
           geronimoVersion : getMavenSettings().geronimoVersion, 
           geronimoModule : geronimoModule ]
     )
