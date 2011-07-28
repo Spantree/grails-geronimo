@@ -2,6 +2,7 @@ includeTargets << grailsScript("_GrailsWar")
 
 includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoModules.groovy")
 includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoXml.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoUserArgs.groovy")
 
 // War utilities
 
@@ -25,17 +26,6 @@ generateWarArchive = { manifestFile ->
     def dir = warFile.parentFile
     if (!dir.exists()) ant.mkdir(dir:dir)
         ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile?:getDefaultManifestFileName())
-}
-
-// Runs a GShell command
-execGshCmd = { geronimoHome, cmd ->
-    def commandList = ["${geronimoHome}/bin/gsh", "-c", "$cmd"]
-    println "Executing $commandList"
-    def proc = commandList.execute()
-    proc.waitFor()
-    System.out << proc.text
-    println "return code: ${proc.exitValue()}"
-    println "stderr: ${proc.err.text}"
 }
 
 // Targets for building skinny wars
@@ -62,42 +52,6 @@ target(generateCars: "Generates car files") {
     }
 }
 
-target(deployCars: "Deploys car plugins into local geronimo server") {
-    depends(parseArguments)
-
-    if ( !argsMap."no-geronimo-cars" )
-        generateCars()
-
-    def home = argsMap."geronimo-home" ?: getGeronimoSettings().home
-    def user = argsMap."geronimo-pass" ?: getGeronimoSettings().user
-    def pass = argsMap."geronimo-user" ?: getGeronimoSettings().pass
-
-    new File(getMavenSettings().baseDir).eachDir { File pluginBaseDir ->
-        def pluginCarDir = new File( "${pluginBaseDir}/target" )        
-        pluginCarDir.eachFileMatch(~/.*\.car/) {
-            execGshCmd( home, "deploy/install-plugin ${it.absolutePath} -u $user -w $pass" )
-        }
-    }
-}
-
-target(deployWar: "Deploys war into local geronimo server") {
-    depends(parseArguments)
-
-    if ( !argsMap."no-geronimo-war" )
-        skinnyWar()
-
-    if ( !argsMap."no-geronimo-deploy-cars" )
-        deployCars()
-
-    def home = argsMap."geronimo-home" ?: getGeronimoSettings().home
-    def user = argsMap."geronimo-pass" ?: getGeronimoSettings().user
-    def pass = argsMap."geronimo-user" ?: getGeronimoSettings().pass
-
-    // Based on: https://cwiki.apache.org/GMOxDOC21/gshell.html#GShell-DeployinganApplicationtoaServerInstance
-    def warPath = new File("target/${grailsAppName}-${metadata.getApplicationVersion()}.war").absolutePath
-    execGshCmd( home, "deploy/deploy ${warPath} -u $user -w $pass" )
-}
-
 target(fatWar: "Generates a fat war suitable for geronimo deployment") {   
     generateExplodedWar()
     generateGeronimoWebXml( getDefaultGeronimoWebXmlParams() )
@@ -108,7 +62,7 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
 target(skinnyWar: "Generates a skinny war") {
     depends(parseArguments)
 
-    if ( !argsMap."no-geronimo-cars" )
+    if ( getGeronimoShouldGenerateCars() )
         generateCars()
     
     generateExplodedWar()
@@ -116,17 +70,13 @@ target(skinnyWar: "Generates a skinny war") {
     // Extract jars which are core or plugin dependencies
     def jarsToDelete = []
     def libDir = new File("${stagingDir}/WEB-INF/lib")
-    // Iterate over all jar files within lib dir
-    libDir.eachFileMatch(~/.*\.jar/) {
-        // Determine if jar file is a core or plugin dependency
-        def jarName = it.name
-        def isCoreDep = getCoreGeronimoModule().dependencies.any { it.packagedName == jarName }
-        def isPluginDep =  isCoreDep ? false : getPluginGeronimoModules().any { plugin ->
-               plugin.dependencies.any { it.packagedName == jarName } || plugin.libs.any { it.name == jarName }
-        }
+    def providedModules = getPluginGeronimoModules() + getCoreGeronimoModule()
+    def providedJars = [ providedModules*.dependencies*.packagedName, providedModules*.libs*.file*.name ].flatten()
 
-        if ( isCoreDep || isPluginDep )
-            jarsToDelete << "${libDir}/${jarName}"
+    // Iterate over all jar files within lib dir
+    libDir.eachFileMatch(~/.*\.jar/) { jarFile ->
+        if ( jarFile.name in providedJars )
+            jarsToDelete << jarFile
     }
 
     // Delete all jars that are core or plugin dependencies
@@ -144,7 +94,7 @@ target(skinnyWar: "Generates a skinny war") {
     }
 
     // Generate geronimo-web.xml    
-    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getAppDependencies() ) )
+    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getAppDependencies() + getLibDependencies() ) )
 
     // Create the war file
     generateWarArchive( manifestFile )

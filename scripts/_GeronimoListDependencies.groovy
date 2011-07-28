@@ -36,3 +36,10 @@ target(listSkinnyAppDependencies: "Display a list of dependencies for the skinny
     }
 }
 
+target(listLibDependencies: "Display a list of library (jar) dependencies") {
+    println "Retrieving library dependencies"
+    getLibDependencies().each {
+        println "- $it"
+    }
+}
+
