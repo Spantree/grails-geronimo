@@ -28,12 +28,26 @@ if ( !configFile.exists() || confirmInput("Overwrite existing grails-geronimo co
 /////////////////////////////////
 // GRAILS-GERONIMO CONFIGURATION
 
-// Setting for interfacing with the geronimo server
-def geronimoSettings = [
-    home : '',
-    user : 'system',
-    pass : 'manager',
-    version : '2.1.7'
+// Default setting for interfacing with the geronimo server
+def geronimoDefaultSettings = [
+    // The location of the geronimo installation
+    'geronimo-home' : '',
+    // The user name necessary for deploying to the server
+    'geronimo-user' : 'system',
+    // The password necessary for deploying to the server
+    'geronimo-pass' : 'manager',
+    // The temporary staging dir for deploying library jars
+    'geronimo-staging-dir' : grailsSettings.projectWarExplodedDir.toString() + "_geronimo",
+    // If true, cars will not be generated during war build
+    'no-geronimo-cars' : false,
+    // If true, skinny war will not be built during war deployment
+    'no-geronimo-war' : false,
+    // If true, cars will not be deployed during war deployment
+    'no-geronimo-deploy-cars' : false,
+    // If true, library jars will not be deployed during war deployment
+    'no-geronimo-deploy-libs' : false,
+    // The version of geronimo we support
+    'geronimo-version' : '2.1.7'
 ]
 
 // Map from ivy artifacts to maven artifacts
@@ -45,14 +59,14 @@ def ivyToMavenArtifactMap = [
 
 // Maven settings for generating car files
 def mavenSettings = [
-    geronimoVersion : geronimoSettings.version,
+    geronimoVersion : geronimoDefaultSettings['geronimo-version'],
     groupId : 'org.apache.geronimo.plugins',
     baseDir : 'target/geronimo',
     packaging : 'car'
 ]
 
-getGeronimoSettings = {
-    return geronimoSettings
+getGeronimoDefaultSettings = {
+    return geronimoDefaultSettings
 }
 
 getIvyToMavenArtifactMap = {

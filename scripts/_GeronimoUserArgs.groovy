@@ -2,35 +2,39 @@ includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_Geronimo
 
 // Geronimo user args utilities
 
+getGeronimoSetting = { key ->
+    argsMap[ key ] ?: getGeronimoDefaultSettings()[ key ]
+}
+
 getGeronimoHome = {
-    argsMap['geronimo-home'] ?: getGeronimoSettings().home
+    getGeronimoSetting( 'geronimo-home' )
 }
 
 getGeronimoUser = {
-    argsMap['geronimo-user'] ?: getGeronimoSettings().user
+    getGeronimoSetting( 'geronimo-user' )
 }
 
 getGeronimoPass = {
-    argsMap['geronimo-pass'] ?: getGeronimoSettings().pass
+    getGeronimoSetting( 'geronimo-pass' )
 }
 
 getGeronimoStagingDir = {
-    argsMap['geronimo-staging-dir'] ?: grailsSettings.projectWarExplodedDir.toString() + "_geronimo"
+    getGeronimoSetting( 'geronimo-staging-dir' )
 }
 
 getGeronimoShouldGenerateCars = {
-    return !argsMap['no-geronimo-cars']
+    return !getGeronimoSetting( 'no-geronimo-cars' )
 }
 
 getGeronimoShouldGenerateWar = {
-    return !argsMap['no-geronimo-war']
+    return !getGeronimoSetting( 'no-geronimo-war' )
 }
 
 getGeronimoShouldDeployCars = {
-    return !argsMap['no-geronimo-deploy-cars']
+    return !getGeronimoSetting( 'no-geronimo-deploy-cars' )
 }
 
 getGeronimoShouldDeployLibs = {
-    return !argsMap['no-geronimo-deploy-libs']
+    return !getGeronimoSetting( 'no-geronimo-deploy-libs' )
 }
 
