@@ -1,6 +1,6 @@
 # Grails Geronimo Plugin
 
-A [Grails](http://www.grails.org/) plugin allowing for creation of `skinny` and `fat` wars for deployment on Geronimo servers. Fat wars are the same as those produced from the `grails war` bundling with the sole addition of a `geronimo-web.xml` configuration. Skinny wars are stripped of all grails-core and plugin jar dependencies. These dependencies are instead bundled as Geronimo plugin car files. They can be deployed independently of the skinny war and reduce bloat by avoiding jar duplication among multiple grails applications.
+A [Grails](http://www.grails.org/) plugin allowing for creation of _skinny_ and _fat_ wars for deployment on Geronimo servers. Fat wars are the same as those produced from the `grails war` bundling with the sole addition of a `geronimo-web.xml` configuration. Skinny wars are stripped of all grails-core and plugin jar dependencies. These dependencies are instead bundled as Geronimo plugin car files. They can be deployed independently of the skinny war and reduce bloat by avoiding jar duplication among multiple grails applications.
 
 ## Authors
 
@@ -20,13 +20,13 @@ The following sections are meant to be a quick-start guide for configuring and u
 
 ### Basic Configuration
 
-Fat and skinny wars may be generated with no additional configuration necessary. However, to allow Grails to deploy to a Geronimo server, additional configuration must be specified in your application`s `grails-app/conf/grails-Geronimo/_GeronimoConfig.groovy`. In the `geronimoDefaultSettings` map, enter values for the `geronimo-home`, `geronimo-user`, and `geronimo-pass` fields. These values are used for specifying the path to your Geronimo installation, your administrative user name, and your administrative password respectively. Grails will use these values to deploy war files and their associated dependency car files.
+Fat and skinny wars may be generated with no additional configuration necessary. However, to allow Grails to deploy to a Geronimo server, additional configuration must be specified in your application's `grails-app/conf/grails-Geronimo/_GeronimoConfig.groovy`. In the `geronimoDefaultSettings` map, enter values for the `geronimo-home`, `geronimo-user`, and `geronimo-pass` fields. These values are used for specifying the path to your Geronimo installation, your administrative user name, and your administrative password respectively. Grails will use these values to deploy war files and their associated dependency car files.
 
 ### Basic Usage
 
 After installing and configuring the plugin, simply type `grails deployWar`. That`s it! By default, this command will package the Grails application as a skinny war, package grails-core and plugin dependencies as Geronimo car plugins, and finally deploy all necessary war, car, and jar files to the Geronimo server.
 
-If deploying the application isn`t desired, simply type `grails skinnyWar`. By default, this command will package the Grails application as a skinny war and package grails-core and plugin dependencies as Geronimo car plugins.
+If deploying the application isn't desired, simply type `grails skinnyWar`. By default, this command will package the Grails application as a skinny war and package grails-core and plugin dependencies as Geronimo car plugins.
 
 ## Advanced Configuration and Usage
 
