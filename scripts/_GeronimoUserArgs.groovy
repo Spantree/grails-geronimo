@@ -3,7 +3,7 @@ includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_Geronimo
 // Geronimo user args utilities
 
 getGeronimoSetting = { key ->
-    argsMap[ key ] ?: getGeronimoDefaultSettings()[ key ]
+    argsMap.containsKey( key ) ? argsMap[ key ] : getGeronimoDefaultSettings()[ key ]
 }
 
 getGeronimoHome = {
