@@ -43,10 +43,10 @@ target(stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed 
 }
 
 target(generateCars: "Generates car files") {
-    depends(stageCore, stagePlugins)
+    depends(stageCore, stagePlugins, parseArguments)
     new File(getMavenSettings().baseDir).eachDir { File pomBase ->
-        println "Packaging car from ${pomBase}/pom.xml"
-        def proc = "mvn package".execute([], pomBase)
+        println "Packaging car from ${pomBase}/pom.xml with options: ${getMavenOpts()}"
+        def proc = "mvn package ${getMavenOpts()}".execute([], pomBase)
         System.out << proc.text
         proc.waitFor()
     }

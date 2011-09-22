@@ -62,7 +62,8 @@ def mavenSettings = [
     geronimoVersion : geronimoDefaultSettings['geronimo-version'],
     groupId : 'org.apache.geronimo.plugins',
     baseDir : 'target/geronimo',
-    packaging : 'car'
+    packaging : 'car',
+	'maven-opts' : '' // Additional command line options to pass to maven build
 ]
 
 getGeronimoDefaultSettings = {

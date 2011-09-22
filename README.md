@@ -50,11 +50,15 @@ The geronimoDefaultSettings map contains options for war generation and geronimo
 * `no-geronimo-deploy-libs` : Must be `true` or `false`.  If true, jar files residing in plugin `lib` directories will not be deployed as libraries during skinny war deployment.  This is useful for improving iteration times if they have already been deployed.  If false, the jar files will be deployed.
 * `geronimo-version` : Currently, this is not meant to be modified by the end user.  This simply states the highest version of Geronimo that is supported by the Grails Geronimo Grails Plugin.
 
-These options may also be specified via commandline.  For example, `grails deployWar no-geronimo-deploy-cars` will deploy a skinny war without deploying grails-core and plugin dependencies.
+These options may also be specified via commandline.  For example, `grails -Dno-geronimo-deploy-cars deployWar` will deploy a skinny war without deploying grails-core and plugin dependencies.
 
 #### ivyToMavenArtifactMap
 
 Maven (with the Geronimo Maven Car Plugin) is used for packaging grails-core and plugin dependencies into deployable Geronimo plugin car files.  Since Grails uses Ivy, certain dependencies must be converted to Maven names in order to work with Maven packaging.  This map is meant to do just that.  It maps an Ivy `group ID:artifact ID` key string to a map containing the corresponding Maven group and artifact IDs.  This map is exposed in `_GeronimoConfig.groovy` in case additional artifacts need to be coverted.
+
+### mavenSettings
+
+This mapping specifies additional maven configuration such as packaging and application version.  The parameter 'maven-opts' may be specified via commandline (e.g. - `grails -Dmaven-opts='-X' generateCars`).
 
 ### Advanced Usage
 

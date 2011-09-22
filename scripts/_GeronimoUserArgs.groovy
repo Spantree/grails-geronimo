@@ -2,8 +2,16 @@ includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_Geronimo
 
 // Geronimo user args utilities
 
+getConfigSetting = { key, configMap ->
+	System.getProperty( key ) ?: configMap[ key ]
+}
+
 getGeronimoSetting = { key ->
-    argsMap.containsKey( key ) ? argsMap[ key ] : getGeronimoDefaultSettings()[ key ]
+    getConfigSetting( key,  getGeronimoDefaultSettings() )
+}
+
+getMavenSetting = { key ->
+	getConfigSetting( key, getMavenSettings() )
 }
 
 getGeronimoHome = {
@@ -36,5 +44,9 @@ getGeronimoShouldDeployCars = {
 
 getGeronimoShouldDeployLibs = {
     return !getGeronimoSetting( 'no-geronimo-deploy-libs' )
+}
+
+getMavenOpts = {
+	getMavenSetting( 'maven-opts' )
 }
 
