@@ -56,7 +56,7 @@ These options may also be specified via commandline.  For example, `grails -Dno-
 
 Maven (with the Geronimo Maven Car Plugin) is used for packaging grails-core and plugin dependencies into deployable Geronimo plugin car files.  Since Grails uses Ivy, certain dependencies must be converted to Maven names in order to work with Maven packaging.  This map is meant to do just that.  It maps an Ivy `group ID:artifact ID` key string to a map containing the corresponding Maven group and artifact IDs.  This map is exposed in `_GeronimoConfig.groovy` in case additional artifacts need to be coverted.
 
-### mavenSettings
+#### mavenSettings
 
 This mapping specifies additional maven configuration such as packaging and application version.  The parameter 'maven-opts' may be specified via commandline (e.g. - `grails -Dmaven-opts='-X' generateCars`).
 
