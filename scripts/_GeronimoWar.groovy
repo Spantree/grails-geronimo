@@ -93,8 +93,9 @@ target(skinnyWar: "Generates a skinny war") {
         attribute(name:"Bundle-ClassPath",value:"${classPath}")
     }
 
-    // Generate geronimo-web.xml    
-    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( getAppDependencies() + getLibDependencies() ) )
+    // Generate geronimo-web.xml
+	def externalDependencies = getAppDependencies() + getLibDependencies() - getSkinnyAppDependencies()
+    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( externalDependencies ) )
 
     // Create the war file
     generateWarArchive( manifestFile )
