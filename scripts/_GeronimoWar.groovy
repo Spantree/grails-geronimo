@@ -30,20 +30,20 @@ generateWarArchive = { manifestFile ->
 
 // Targets for building skinny wars
 
-target(stageCore: "Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins") {
+target(stageCoreCar: "Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins") {
     println "Generating Maven XML for grails-core"
-    generatePomAndPlanXml( getCoreGeronimoModule() )
+    generateCarPomAndPlanXml( getCoreGeronimoModule() )
 }
 
-target(stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
+target(stagePluginsCars: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
     getPluginGeronimoModules().each {
         println "Generating Maven XML for ${it.artifactId}"
-        generatePomAndPlanXml( it )
+        generateCarPomAndPlanXml( it )
     }
 }
 
 target(generateCars: "Generates car files") {
-    depends(stageCore, stagePlugins, parseArguments)
+    depends(stageCoreCar, stagePluginsCars, parseArguments)
     new File(getMavenSettings().baseDir).eachDir { File pomBase ->
         println "Packaging car from ${pomBase}/pom.xml with options: ${getMavenOpts()}"
         def proc = "mvn package ${getMavenOpts()}".execute([], pomBase)

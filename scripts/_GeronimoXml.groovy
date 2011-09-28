@@ -69,7 +69,7 @@ getDefaultGeronimoWebXmlParams = { dependencies ->
 //      ivyToMavenArtifactMap:(map) - maps ivy group and artifact ids to maven ids
 //      geronimoVersion:(string) - the version of geronimo to use
 //      geronimoModule: - a module containing metadata such as artifact id, group id, and dependencies
-void generatePomXml( def args ) {
+void generateCarPomXml( def args ) {
     args.xml.project('xsi:schemaLocation': 'http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd') {
         modelVersion('4.0.0')
         parent() {
@@ -147,7 +147,7 @@ void generatePomXml( def args ) {
     }
 }
 
-void generatePlanXml( def xml ) {
+void generateCarPlanXml( def xml ) {
     xml.module(xmlns:'http://geronimo.apache.org/xml/ns/deployment-1.2') {
         environment {
             'hidden-classes' {
@@ -160,11 +160,11 @@ void generatePlanXml( def xml ) {
     }
 }
 
-generatePomAndPlanXml = { geronimoModule ->
+generateCarPomAndPlanXml = { geronimoModule ->
     def artifactRootPath = "${getMavenSettings().baseDir}/${geronimoModule.artifactId}"
     new File( "$artifactRootPath/" ).mkdirs()
     def pomWriter = new FileWriter("$artifactRootPath/pom.xml")
-    generatePomXml( 
+    generateCarPomXml( 
         [ xml : (new MarkupBuilder(pomWriter)), 
           ivyToMavenArtifactMap : getIvyToMavenArtifactMap(),
           geronimoVersion : getMavenSettings().geronimoVersion, 
@@ -173,6 +173,6 @@ generatePomAndPlanXml = { geronimoModule ->
     
     new File("$artifactRootPath/src/main/plan/").mkdirs()
     def planWriter = new FileWriter("$artifactRootPath/src/main/plan/plan.xml")
-    generatePlanXml(new MarkupBuilder(planWriter))
+    generateCarPlanXml(new MarkupBuilder(planWriter))
 }
 
