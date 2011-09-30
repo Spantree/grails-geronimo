@@ -1,18 +1,19 @@
 includeTargets << grailsScript("_GrailsWar")
 
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoUserArgs.groovy")
 includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoModules.groovy")
 includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoXml.groovy")
-includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoUserArgs.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoPackagingPolicies.groovy")
 
 // War utilities
 
 // Returns the default manifest file name for use in war generation
-getDefaultManifestFileName = {
+def getDefaultManifestFileName = {
     return "$stagingDir/META-INF/MANIFEST.MF"
 }
 
 // Generates a non-archived war in a staging directory
-generateExplodedWar = { 
+def generateExplodedWar = { 
     // Flag that we should not delete the war staging directory
     buildExplodedWar = true
     // Build the exploded war (does not actually generate a war file)
@@ -20,7 +21,7 @@ generateExplodedWar = {
 }
 
 // Collects war staging directory into a single war archive file
-generateWarArchive = { manifestFile ->
+def generateWarArchive = { manifestFile ->
     // Create the war file
     def warFile = new File(warName)
     def dir = warFile.parentFile
@@ -28,33 +29,33 @@ generateWarArchive = { manifestFile ->
         ant.jar(destfile:warName, basedir:stagingDir, manifest:manifestFile?:getDefaultManifestFileName())
 }
 
-// Targets for building skinny wars
+// Targets for building external dependency packages
 
-target(stageCoreCar: "Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins") {
-    println "Generating Maven XML for grails-core"
-    generateCarPomAndPlanXml( getCoreGeronimoModule() )
+target(stageCore: "Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins") {
+    println "Generating Maven XML for grails-core with result: ${conditionalCreateMavenXmlFiles( getCoreGeronimoModule(), getGeronimoPackagingPolicy() )}"
 }
 
-target(stagePluginsCars: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
+target(stagePlugins: "Generates a Maven pom.xml and plan.xml for each installed plugin") {
     getPluginGeronimoModules().each {
-        println "Generating Maven XML for ${it.artifactId}"
-        generateCarPomAndPlanXml( it )
+		println "Generating Maven XML for ${it.artifactId} with result: ${conditionalCreateMavenXmlFiles( it, getGeronimoPackagingPolicy() )}"
     }
 }
 
-target(generateCars: "Generates car files") {
-    depends(stageCoreCar, stagePluginsCars, parseArguments)
-    new File(getMavenSettings().baseDir).eachDir { File pomBase ->
-        println "Packaging car from ${pomBase}/pom.xml with options: ${getMavenOpts()}"
-        def proc = "mvn package ${getMavenOpts()}".execute([], pomBase)
+target(generateCommonResourcePackages: "Generates maven package files for common resources") {
+    depends(stageCore, stagePlugins, parseArguments)
+    new File(getConfigUtil().getMavenBaseDir()).eachDir { File pomBase ->
+        println "Packaging ${getConfigUtil().getMavenPackaging()} from ${pomBase}/pom.xml with options: ${getConfigUtil().getMavenOpts()}"
+        def proc = "mvn package ${getConfigUtil().getMavenOpts()}".execute([], pomBase)
         System.out << proc.text
         proc.waitFor()
     }
 }
 
+// Targets for building wars
+
 target(fatWar: "Generates a fat war suitable for geronimo deployment") {   
     generateExplodedWar()
-    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams() )
+    buildGeronimoWebXml( getDefaultGeronimoWebXmlParams() )
     generateWarArchive()
     cleanUpAfterWar()       
 }
@@ -62,15 +63,15 @@ target(fatWar: "Generates a fat war suitable for geronimo deployment") {
 target(skinnyWar: "Generates a skinny war") {
     depends(parseArguments)
 
-    if ( getGeronimoShouldGenerateCars() )
-        generateCars()
+    if ( getConfigUtil().getGeronimoShouldGenerateCommonResourcePackages() )
+        generateCommonResourcePackages()
     
     generateExplodedWar()
 
     // Extract jars which are core or plugin dependencies
     def jarsToDelete = []
     def libDir = new File("${stagingDir}/WEB-INF/lib")
-    def providedModules = getPluginGeronimoModules() + getCoreGeronimoModule()
+    def providedModules = getProvidedModules()
     def providedJars = [ providedModules*.dependencies*.packagedName, providedModules*.libs*.file*.name ].flatten()
 
     // Iterate over all jar files within lib dir
@@ -94,8 +95,7 @@ target(skinnyWar: "Generates a skinny war") {
     }
 
     // Generate geronimo-web.xml
-	def externalDependencies = getAppDependencies() + getLibDependencies() - getSkinnyAppDependencies()
-    generateGeronimoWebXml( getDefaultGeronimoWebXmlParams( externalDependencies ) )
+    buildGeronimoWebXml( getDefaultGeronimoWebXmlParams( getGeronimoPackagingPolicy().getExternalDependencies() ) )
 
     // Create the war file
     generateWarArchive( manifestFile )

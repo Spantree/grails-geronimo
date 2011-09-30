@@ -8,7 +8,7 @@ import org.apache.commons.io.FilenameUtils
 // Includes
 
 includeTargets << grailsScript("_GrailsPlugins")
-includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_GeronimoConfig.groovy")
+includeTargets << new File(geronimoPluginDir, "scripts/_GeronimoUserArgs.groovy")
 
 // Globals
 
@@ -57,6 +57,11 @@ class Module {
     String getPackagedName() {
         "${artifactId}-${version}.${packaging}"
     }
+
+	// Default is to return unmapped group and artifact ids (needed for geronimo-web.xml dependencies)
+    Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
+        return [ groupId : this.groupId, artifactId : this.artifactId ]
+    }
 }
 
 // A high level geronimo war or plugin car with it's associated dependencies and libs
@@ -70,6 +75,11 @@ class GeronimoModule extends Module {
     String getMavenName() {
         "Geronimo Plugins :: Geronimo ${this.artifactId} Plugin"
     }
+
+	// Returns true if any libs or dependencies exist
+	boolean shouldGenerateMavenXml() {
+		return (dependencies?.size() > 0) || (libs?.size() > 0)
+	}
 }
 
 // A class for storing info on a single dependency
@@ -136,11 +146,6 @@ class LibModule extends Module {
         this.file = libDescriptor.file
     }
 
-    // HACK - these dependencies are not actually used by maven (but needed for geronimo-web.xml dependencies)
-    Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
-        return [ groupId : this.groupId, artifactId : this.artifactId ]
-    }
-
     // Return a string version of this dependency 
     String toString() {
         return super.toString() + "\n\t${file}"
@@ -157,13 +162,13 @@ boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurati
 }
 
 // Initializes the grails-core geronimo module
-initCoreGeronimoModule = {
+def initCoreGeronimoModule = {
     // Initialize module metadata
     coreGeronimoModuleCache = new GeronimoModule(
-        groupId : getMavenSettings().groupId,    
+        groupId : getConfigUtil().getMavenGroupId(),    
         artifactId : 'grails-core',
         version : grailsSettings.grailsVersion,  
-        packaging : getMavenSettings().packaging,
+        packaging : getConfigUtil().getMavenPackaging(),
         dependencies : [],
         libs : []
     )
@@ -194,7 +199,7 @@ getCoreGeronimoModule = {
 }
 
 // Initializes a map from plugin name -> plugin geronimo module
-initPluginGeronimoModules = {
+def initPluginGeronimoModules = {
     Metadata metadata = Metadata.current
     def appName = metadata.applicationName ?: "grails"
     def appVersion = metadata.applicationVersion ?: grailsSettings.grailsVersion
@@ -209,10 +214,10 @@ initPluginGeronimoModules = {
 
         def pluginInfo = it
         pluginGeronimoModule = new GeronimoModule(
-            groupId : getMavenSettings().groupId,
+            groupId : getConfigUtil().getMavenGroupId(),
             artifactId : "grails-${pluginInfo.name}",
             version : "${pluginInfo.version}",
-            packaging : getMavenSettings().packaging,
+            packaging : getConfigUtil().getMavenPackaging(),
             dependencies : [],
             libs : []
         )
@@ -278,6 +283,11 @@ getLibDependencies = {
         }
     }
     return libDependenciesCache
+}
+
+// Core + Plugins
+getProvidedModules = {
+	getPluginGeronimoModules() + getCoreGeronimoModule()
 }
 
 // Scratch/Debug targets

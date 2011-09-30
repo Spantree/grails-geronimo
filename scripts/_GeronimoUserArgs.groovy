@@ -2,51 +2,75 @@ includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_Geronimo
 
 // Geronimo user args utilities
 
-getConfigSetting = { key, configMap ->
+def getConfigSetting = { key, configMap ->
 	System.getProperty( key ) ?: configMap[ key ]
 }
 
-getGeronimoSetting = { key ->
-    getConfigSetting( key,  getGeronimoDefaultSettings() )
+def getGeronimoSetting = { key ->
+	getConfigSetting( key,  getGeronimoDefaultSettings() )
 }
 
-getMavenSetting = { key ->
-	getConfigSetting( key, getMavenSettings() )
+def getMavenSetting = { key ->
+	getConfigSetting( key, getMavenDefaultSettings() )
 }
 
-getGeronimoHome = {
-    getGeronimoSetting( 'geronimo-home' )
-}
+def configUtilMap = [
+		
+	// Geronimo settings
 
-getGeronimoUser = {
-    getGeronimoSetting( 'geronimo-user' )
-}
+	getGeronimoHome : {
+	    getGeronimoSetting( 'geronimo-home' )
+	},
 
-getGeronimoPass = {
-    getGeronimoSetting( 'geronimo-pass' )
-}
+	getGeronimoUser : {
+	    getGeronimoSetting( 'geronimo-user' )
+	},
 
-getGeronimoStagingDir = {
-    getGeronimoSetting( 'geronimo-staging-dir' )
-}
+	getGeronimoPass : {
+	    getGeronimoSetting( 'geronimo-pass' )
+	},
 
-getGeronimoShouldGenerateCars = {
-    return !getGeronimoSetting( 'no-geronimo-cars' )
-}
+	getGeronimoStagingDir : {
+	    getGeronimoSetting( 'geronimo-staging-dir' )
+	},
 
-getGeronimoShouldGenerateWar = {
-    return !getGeronimoSetting( 'no-geronimo-war' )
-}
+	getGeronimoVersion : {
+		getGeronimoSetting( 'geronimo-version' )
+	},
 
-getGeronimoShouldDeployCars = {
-    return !getGeronimoSetting( 'no-geronimo-deploy-cars' )
-}
+	getGeronimoShouldGenerateCommonResourcePackages : {
+	   !getGeronimoSetting( 'no-geronimo-common-resource-packages' )
+	},
 
-getGeronimoShouldDeployLibs = {
-    return !getGeronimoSetting( 'no-geronimo-deploy-libs' )
-}
+	getGeronimoShouldGenerateWar : {
+	    !getGeronimoSetting( 'no-geronimo-war' )
+	},
 
-getMavenOpts = {
-	getMavenSetting( 'maven-opts' )
-}
+	getGeronimoShouldDeployCommonResourcePackages : {
+	    !getGeronimoSetting( 'no-geronimo-deploy-common-resource-packages' )
+	},
 
+	getGeronimoShouldDeployLibs : {
+	    !getGeronimoSetting( 'no-geronimo-deploy-libs' )
+	},
+	
+	// Maven settings
+
+	getMavenGroupId : {
+		getMavenSetting( 'maven-group-id' )
+	},
+
+	getMavenBaseDir : {
+		getMavenSetting( 'maven-base-dir' )
+	},
+
+	getMavenPackaging : {
+		getMavenSetting( 'maven-packaging' )
+	},
+
+	getMavenOpts : {
+		getMavenSetting( 'maven-opts' )
+	}
+]
+
+getConfigUtil = { configUtilMap }

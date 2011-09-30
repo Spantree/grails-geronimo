@@ -38,12 +38,12 @@ def geronimoDefaultSettings = [
     'geronimo-pass' : 'manager',
     // The temporary staging dir for deploying library jars
     'geronimo-staging-dir' : grailsSettings.projectWarExplodedDir.toString() + "_geronimo",
-    // If true, cars will not be generated during war build
-    'no-geronimo-cars' : false,
+    // If true, cars/rars will not be generated during war build
+    'no-geronimo-common-resource-packages' : false,
     // If true, skinny war will not be built during war deployment
     'no-geronimo-war' : false,
     // If true, cars will not be deployed during war deployment
-    'no-geronimo-deploy-cars' : false,
+    'no-geronimo-deploy-common-resource-packages' : false,
     // If true, library jars will not be deployed during war deployment
     'no-geronimo-deploy-libs' : false,
     // The version of geronimo we support
@@ -57,12 +57,11 @@ def ivyToMavenArtifactMap = [
 	'org.springframework:org.springframework.web.servlet' : [ groupId : 'org.springframework', artifactId : 'spring-webmvc' ]
 ]
 
-// Maven settings for generating car files
-def mavenSettings = [
-    geronimoVersion : geronimoDefaultSettings['geronimo-version'],
-    groupId : 'org.apache.geronimo.plugins',
-    baseDir : 'target/geronimo',
-    packaging : 'car',
+// Maven settings for generating car/rar files
+def mavenDefaultSettings = [
+    'maven-group-id' : 'org.apache.geronimo.plugins',
+    'maven-base-dir' : 'target/geronimo',
+    'maven-packaging' : 'rar',
 	'maven-opts' : '' // Additional command line options to pass to maven build
 ]
 
@@ -74,8 +73,8 @@ getIvyToMavenArtifactMap = {
     return ivyToMavenArtifactMap
 }
 
-getMavenSettings = {
-    return mavenSettings
+getMavenDefaultSettings = {
+    return mavenDefaultSettings
 }
 
 """

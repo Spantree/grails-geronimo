@@ -11,32 +11,22 @@ execGshCmd = { geronimoHome, cmd ->
     println "stderr: ${proc.err.text}"
 }
 
-// Does the actual work of deploying each individual car (does not build the cars)
-def doDeployCars = {
-   new File(getMavenSettings().baseDir).eachDir { File pluginBaseDir ->
-        def pluginCarDir = new File( "${pluginBaseDir}/target" )        
-        pluginCarDir.eachFileMatch(~/.*\.car/) {
-            execGshCmd( getGeronimoHome(), "deploy/install-plugin ${it.absolutePath} -u ${getGeronimoUser()} -w ${getGeronimoPass()}" )
-        }
-    }
-}
-
 // Targets for deploying to Geronimo
 
-target(deployCars: "Deploys car plugins into geronimo server") {
+target(deployCommonResourcePackages: "Deploys car plugins into geronimo server") {
     depends(parseArguments)
 
-    if ( getGeronimoShouldGenerateCars() )
-        generateCars()
+    if ( getConfigUtil().getGeronimoShouldGenerateCommonResourcePackages() )
+        generateCommonResourcePackages()
 
-    doDeployCars()
+    getGeronimoPackagingPolicy().doDeployCommonResourcePackages()
 }
 
 target(deployLibs: "Deploys local jar library files into geronimo server") {
     depends(parseArguments)
 
     // Create staging dir
-    def geronimoStagingDir = getGeronimoStagingDir()
+    def geronimoStagingDir = getConfigUtil().getGeronimoStagingDir()
     ant.mkdir(dir:geronimoStagingDir)
     
     getLibDependencies().each { libDependency ->
@@ -48,7 +38,7 @@ target(deployLibs: "Deploys local jar library files into geronimo server") {
             fileName = stagedFileName
         }
         // Deploy library to geronimo, based on https://cwiki.apache.org/GMOxDOC22/deploy.html
-        execGshCmd( getGeronimoHome(), "deploy/install-library ${fileName} --groupId ${libDependency.groupId} -u ${getGeronimoUser()} -w ${getGeronimoPass()}" )
+        execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/install-library ${fileName} --groupId ${libDependency.groupId} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
     }
 
     // Remove staging dir
@@ -58,19 +48,20 @@ target(deployLibs: "Deploys local jar library files into geronimo server") {
 target(deployWar: "Deploys war into geronimo server") {
     depends(parseArguments)
 
-    if ( getGeronimoShouldGenerateWar() )
+    if ( getConfigUtil().getGeronimoShouldGenerateWar() ) {
         skinnyWar()
+	}
     
-    if ( getGeronimoShouldDeployCars() ) {
+    if ( getConfigUtil().getGeronimoShouldDeployCommonResourcePackages() ) {
         // Avoid building car files twice as they should already be built from war generation
-        doDeployCars()
+        getGeronimoPackagingPolicy().doDeployCommonResourcePackages()
     }
 
-    if ( getGeronimoShouldDeployLibs() )
+    if ( getConfigUtil().getGeronimoShouldDeployLibs() && getGeronimoPackagingPolicy().shouldDeployLibs() )
         deployLibs()
 
     // Based on: https://cwiki.apache.org/GMOxDOC21/gshell.html#GShell-DeployinganApplicationtoaServerInstance
     def warPath = new File("target/${grailsAppName}-${metadata.getApplicationVersion()}.war").absolutePath
-    execGshCmd( getGeronimoHome(), "deploy/deploy ${warPath} -u ${getGeronimoUser()} -w ${getGeronimoPass()}" )
+    execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/deploy ${warPath} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
 }
 
