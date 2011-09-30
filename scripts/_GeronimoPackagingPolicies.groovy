@@ -153,7 +153,7 @@ geronimoCarPolicy = [
 	},
 	
 	// Returns list of server resources to load into classpath
-	getClasspathDependencies : { getAppDependencies() + getLibDependencies() - getSkinnyAppDependencies() },
+	getExternalDependencies : { getAppDependencies() + getLibDependencies() - getSkinnyAppDependencies() },
 	
 	// Local library jars should always be deployed when requested
 	shouldDeployLibs : { true },
