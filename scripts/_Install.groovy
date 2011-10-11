@@ -65,6 +65,14 @@ def mavenDefaultSettings = [
 	'maven-opts' : '' // Additional command line options to pass to maven build
 ]
 
+// Maps a plugin name to a list of artifacts in groupId:artifactId:version:packaging format
+def additionalPluginDependencies = [
+	'grails-core' : [ 
+		'org.hibernate:hibernate-core:3.3.1.GA:jar',
+		'dom4j:dom4j:1.6.1:jar'
+		]
+]
+
 getGeronimoDefaultSettings = {
     return geronimoDefaultSettings
 }
@@ -75,6 +83,10 @@ getIvyToMavenArtifactMap = {
 
 getMavenDefaultSettings = {
     return mavenDefaultSettings
+}
+
+getAdditionalPluginDependencies = {
+	return additionalPluginDependencies
 }
 
 """

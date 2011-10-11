@@ -161,6 +161,28 @@ boolean isAllowedConfiguration( def moduleConfigurations, def runtimeConfigurati
     }
 }
 
+// Add any additional user specified dependencies
+def appendAdditionalPluginDependencies = { module ->
+	def eDependency = [ groupId:0, artifactId:1, version:2, packaging:3 ]
+	if ( getAdditionalPluginDependencies()[ module.artifactId ] ) {
+		getAdditionalPluginDependencies()[ module.artifactId ].each {
+			def dependencyTokens = it.tokenize(':')
+			if ( dependencyTokens.size() == eDependency.size() ) {
+				module.dependencies << new DependencyModule(
+					groupId : dependencyTokens[eDependency.groupId],
+					artifactId : dependencyTokens[eDependency.artifactId],
+					version : dependencyTokens[eDependency.version],
+					packaging : dependencyTokens[eDependency.packaging]
+					)
+			}
+			else {
+				println "WARNING: malformed configuration string: ${it} for additional plugin dependency of ${module.artifactId}"
+			}
+		}			
+	}
+		
+}
+
 // Initializes the grails-core geronimo module
 def initCoreGeronimoModule = {
     // Initialize module metadata
@@ -189,6 +211,8 @@ def initCoreGeronimoModule = {
             coreGeronimoModuleCache.dependencies << new DependencyModule( dependencyDescriptor : it )
         }
     }
+
+	appendAdditionalPluginDependencies( coreGeronimoModuleCache )
 }
 
 // Returns data structure with all information necessary to generate and deploy the core geronimo car
@@ -233,6 +257,8 @@ def initPluginGeronimoModules = {
             pluginGeronimoModule.libs << new LibModule( libDescriptor : [ owner: pluginGeronimoModule, file: it ] )
         }
 
+		appendAdditionalPluginDependencies( pluginGeronimoModule )
+		
         pluginGeronimoModulesCache << pluginGeronimoModule
     }
 }
@@ -287,7 +313,7 @@ getLibDependencies = {
 
 // Core + Plugins
 getProvidedModules = {
-	getPluginGeronimoModules() + getCoreGeronimoModule()
+	[getCoreGeronimoModule()] + getPluginGeronimoModules()
 }
 
 // Scratch/Debug targets
