@@ -46,6 +46,14 @@ conditionalCreateMavenXmlFiles = { geronimoModule, policy ->
 	return geronimoModule.shouldGenerateMavenXml() ? policy.createMavenXmlFiles( geronimoModule ) : false
 }
 
+// Returns string with name of grails-tomcat plugin
+getTomcatPluginName = { "grails-tomcat" }
+
+// Returns true if tomcat can be deployed or module is not the tomcat plugin
+satisfiesTomcatCriteria = { pluginName ->
+	getConfigUtil().getGeronimoShouldDeployTomcat() || ( pluginName != getTomcatPluginName() )
+}
+
 // Car policy
 
 geronimoCarPolicy = [
@@ -299,7 +307,7 @@ geronimoRarPolicy = [
 	},
 	
 	// Returns list of server resources to load into classpath
-	getExternalDependencies : { getProvidedModules().findAll { it.shouldGenerateMavenXml() } },
+	getExternalDependencies : { getProvidedModules().findAll { it.shouldGenerateMavenXml() && satisfiesTomcatCriteria( it.artifactId ) } },
 	
 	// Local library jars should never be deployed when requested as they are bundled in the rars
 	shouldDeployLibs : { false },
@@ -307,10 +315,12 @@ geronimoRarPolicy = [
 	// Does the actual work of deploying each individual rar (does not build the rars)
 	doDeployCommonResourcePackages : {
 	   new File(getConfigUtil().getMavenBaseDir()).eachDir { File pluginBaseDir ->
-	        def pluginRarDir = new File( "${pluginBaseDir}/target" )
-	        pluginRarDir.eachFileMatch(~/.*\.rar/) {
-	            execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/deploy ${it.absolutePath} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
-	        }
+			if ( satisfiesTomcatCriteria( pluginBaseDir.name ) ) {
+	        	def pluginRarDir = new File( "${pluginBaseDir}/target" )
+	        	pluginRarDir.eachFileMatch(~/.*\.rar/) {
+	            	execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/deploy ${it.absolutePath} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
+	        	}
+			}
 	    }
 	}
 ]

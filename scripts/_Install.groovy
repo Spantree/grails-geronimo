@@ -46,6 +46,8 @@ def geronimoDefaultSettings = [
     'no-geronimo-deploy-common-resource-packages' : false,
     // If true, library jars will not be deployed during war deployment
     'no-geronimo-deploy-libs' : false,
+	// If true, grails tomcat plugin will not be deployed (not usually necessary for geronimo server)
+	'no-geronimo-deploy-tomcat' : true,
     // The version of geronimo we support
     'geronimo-version' : '2.1.7'
 ]

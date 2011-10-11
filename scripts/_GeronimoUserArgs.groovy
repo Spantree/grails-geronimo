@@ -54,6 +54,10 @@ def configUtilMap = [
 	    !getGeronimoSetting( 'no-geronimo-deploy-libs' )
 	},
 	
+	getGeronimoShouldDeployTomcat : {
+		!getGeronimoSetting( 'no-geronimo-deploy-tomcat' )
+	},
+	
 	// Maven settings
 
 	getMavenGroupId : {
