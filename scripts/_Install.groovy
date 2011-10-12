@@ -28,67 +28,50 @@ if ( !configFile.exists() || confirmInput("Overwrite existing grails-geronimo co
 /////////////////////////////////
 // GRAILS-GERONIMO CONFIGURATION
 
-// Default setting for interfacing with the geronimo server
-def geronimoDefaultSettings = [
-    // The location of the geronimo installation
-    'geronimo-home' : '',
+geronimoDefaultSettings {
+	// The location of the geronimo installation
+    this.'geronimo-home' = ''
     // The user name necessary for deploying to the server
-    'geronimo-user' : 'system',
+    this.'geronimo-user' = 'system'
     // The password necessary for deploying to the server
-    'geronimo-pass' : 'manager',
+    this.'geronimo-pass' = 'manager'
     // The temporary staging dir for deploying library jars
-    'geronimo-staging-dir' : grailsSettings.projectWarExplodedDir.toString() + "_geronimo",
+    this.'geronimo-staging-dir' = grailsSettings.projectWarExplodedDir.toString() + "_geronimo"
     // If true, cars/rars will not be generated during war build
-    'no-geronimo-common-resource-packages' : false,
+    this.'no-geronimo-common-resource-packages' = false
     // If true, skinny war will not be built during war deployment
-    'no-geronimo-war' : false,
+    this.'no-geronimo-war' = false
     // If true, cars will not be deployed during war deployment
-    'no-geronimo-deploy-common-resource-packages' : false,
+    this.'no-geronimo-deploy-common-resource-packages' = false
     // If true, library jars will not be deployed during war deployment
-    'no-geronimo-deploy-libs' : false,
+    this.'no-geronimo-deploy-libs' = false
 	// If true, grails tomcat plugin will not be deployed (not usually necessary for geronimo server)
-	'no-geronimo-deploy-tomcat' : true,
+	this.'no-geronimo-deploy-tomcat' = true
     // The version of geronimo we support
-    'geronimo-version' : '2.1.7'
-]
+    this.'geronimo-version' = '2.1.7'
+}
 
 // Map from ivy artifacts to maven artifacts
-def ivyToMavenArtifactMap = [
-	'apache-taglibs:standard' : [ groupId : 'taglibs', artifactId : 'standard' ],
-	'org.springframework:org.springframework.transaction' : [ groupId : 'org.springframework', artifactId : 'spring-tx' ],
-	'org.springframework:org.springframework.web.servlet' : [ groupId : 'org.springframework', artifactId : 'spring-webmvc' ]
-]
+ivyToMavenArtifactMap {
+	this.'apache-taglibs:standard' = [ groupId : 'taglibs', artifactId : 'standard' ]
+	this.'org.springframework:org.springframework.transaction' = [ groupId : 'org.springframework', artifactId : 'spring-tx' ]
+	this.'org.springframework:org.springframework.web.servlet' = [ groupId : 'org.springframework', artifactId : 'spring-webmvc' ]
+}
 
 // Maven settings for generating car/rar files
-def mavenDefaultSettings = [
-    'maven-group-id' : 'org.apache.geronimo.plugins',
-    'maven-base-dir' : 'target/geronimo',
-    'maven-packaging' : 'rar',
-	'maven-opts' : '' // Additional command line options to pass to maven build
-]
+mavenDefaultSettings {
+    this.'maven-group-id' = 'org.apache.geronimo.plugins'
+    this.'maven-base-dir' = 'target/geronimo'
+    this.'maven-packaging' = 'rar'
+	this.'maven-opts' = '' // Additional command line options to pass to maven build
+}
 
 // Maps a plugin name to a list of artifacts in groupId:artifactId:version:packaging format
-def additionalPluginDependencies = [
-	'grails-core' : [ 
+additionalPluginDependencies {
+	this.'grails-core' = [ 
 		'org.hibernate:hibernate-core:3.3.1.GA:jar',
 		'dom4j:dom4j:1.6.1:jar'
 		]
-]
-
-getGeronimoDefaultSettings = {
-    return geronimoDefaultSettings
-}
-
-getIvyToMavenArtifactMap = {
-    return ivyToMavenArtifactMap
-}
-
-getMavenDefaultSettings = {
-    return mavenDefaultSettings
-}
-
-getAdditionalPluginDependencies = {
-	return additionalPluginDependencies
 }
 
 """

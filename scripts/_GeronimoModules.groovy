@@ -105,7 +105,7 @@ class DependencyModule extends Module {
 
     // Returns Maven mapped group and artifact identifiers
     Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
-        return ivyToMavenArtifactMap[ this.groupId + ":" + this.artifactId ] ?: [
+        return ivyToMavenArtifactMap["${this.groupId}:${this.artifactId}"] ?: [
             groupId : this.groupId,
             artifactId: this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
         ]

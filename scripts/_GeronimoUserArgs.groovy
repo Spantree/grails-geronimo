@@ -1,17 +1,18 @@
-includeTargets << new File("${basedir}/grails-app/conf/grails-geronimo/_GeronimoConfig.groovy")
+
+def config = new ConfigSlurper().parse( new File("${basedir}/grails-app/conf/grails-geronimo/_GeronimoConfig.groovy").toURL() )
 
 // Geronimo user args utilities
 
-def getConfigSetting = { key, configMap ->
-	System.getProperty( key ) ?: configMap[ key ]
+def getConfigSetting = { key, settingsMap ->
+	System.getProperty( key ) ?: config."${settingsMap}"."${key}"
 }
 
 def getGeronimoSetting = { key ->
-	getConfigSetting( key,  getGeronimoDefaultSettings() )
+	getConfigSetting( key, 'geronimoDefaultSettings' )
 }
 
 def getMavenSetting = { key ->
-	getConfigSetting( key, getMavenDefaultSettings() )
+	getConfigSetting( key, 'mavenDefaultSettings' )
 }
 
 def configUtilMap = [
@@ -78,3 +79,7 @@ def configUtilMap = [
 ]
 
 getConfigUtil = { configUtilMap }
+
+getIvyToMavenArtifactMap = { config.ivyToMavenArtifactMap }
+
+getAdditionalPluginDependencies = { config.additionalPluginDependencies }
