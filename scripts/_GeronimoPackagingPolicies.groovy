@@ -171,8 +171,8 @@ geronimoCarPolicy = [
 	   new File(getConfigUtil().getMavenBaseDir()).eachDir { File pluginBaseDir ->
 	        def pluginCarDir = new File( "${pluginBaseDir}/target" )        
 	        pluginCarDir.eachFileMatch(~/.*\.car/) {
-	            execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/install-plugin ${it.absolutePath} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
-	        }
+				getGeronimoDeploymentPolicy().installPlugin( it.absolutePath )
+			}
 	    }
 	}
 ]
@@ -318,7 +318,9 @@ geronimoRarPolicy = [
 			if ( satisfiesTomcatCriteria( pluginBaseDir.name ) ) {
 	        	def pluginRarDir = new File( "${pluginBaseDir}/target" )
 	        	pluginRarDir.eachFileMatch(~/.*\.rar/) {
-	            	execGshCmd( getConfigUtil().getGeronimoHome(), "deploy/deploy ${it.absolutePath} -u ${getConfigUtil().getGeronimoUser()} -w ${getConfigUtil().getGeronimoPass()}" )
+					println "Attempting to deploy"
+					println getGeronimoDeploymentPolicy() as String
+					getGeronimoDeploymentPolicy().deployModule( it.absolutePath )
 	        	}
 			}
 	    }

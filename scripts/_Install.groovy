@@ -48,7 +48,7 @@ geronimoDefaultSettings {
 	// If true, grails tomcat plugin will not be deployed (not usually necessary for geronimo server)
 	this.'no-geronimo-deploy-tomcat' = true
     // The version of geronimo we support
-    this.'geronimo-version' = '2.1.7'
+    this.'geronimo-version' = '2.1.6'
 }
 
 // Map from ivy artifacts to maven artifacts
