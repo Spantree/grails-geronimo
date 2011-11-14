@@ -51,7 +51,7 @@ The geronimoDefaultSettings map contains options for war generation and geronimo
 * `geronimo-deployer` : Options are `gsh` to use GShell for deployment or `native-nix` to use deployer.sh for deployment.
 * `geronimo-version` : Currently, this is not meant to be modified by the end user.  This simply states the highest version of Geronimo that is supported by the Grails Geronimo Grails Plugin.
 
-These options may also be specified via commandline.  For example, `grails -Dno-geronimo-deploy-cars deployWar` will deploy a skinny war without deploying grails-core and plugin dependencies.
+These options may also be specified via commandline.  For example, `grails -Dno-geronimo-deploy-common-resource-packages deployWar` will deploy a skinny war without deploying grails-core and plugin dependencies.
 
 #### ivyToMavenArtifactMap
 
