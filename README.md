@@ -84,14 +84,14 @@ The following is a list of all commands available for the Geronimo Grails Plugin
 
 #### Fat/Skinny War Generation
 
-* `stageCore` : Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins
-* `stagePlugins` : Generates a Maven pom.xml and plan.xml for each installed plugin
-* `generateCars` : Stages and packages grails-core and installed Grails plugins as deployable Geronimo plugin car files
-* `fatWar` : Similar to `grails war` but also bundles a `geronimo-web.xml` within the war to allow for Geronimo deployment.
-* `skinnyWar` : Similar to `fatWar` but grails-core and installed Grails plugins are bundled as external Geronimo plugin car files.
+* `stage-core` : Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins
+* `stage-plugins` : Generates a Maven pom.xml and plan.xml for each installed plugin
+* `generate-common-resource-packages` : Stages and packages grails-core and installed Grails plugins as deployable Geronimo plugin car/rar files
+* `fat-war` : Similar to `grails war` but also bundles a `geronimo-web.xml` within the war to allow for Geronimo deployment.
+* `skinny-war` : Similar to `fatWar` but grails-core and installed Grails plugins are bundled as external Geronimo plugin car files.
 
 #### Geronimo Deployment
 
-* `deployWar` : By default will generate and deploy all necessary war, car, and jar files to the Geronimo server.
-* `deployLibs` : Deploys jar files residing in the `lib` folder of installed Grails plugins to the Geronimo server.
-* `deployCars` : Deploys grails-core and installed Grails plugins as Geronimo plugins.
+* `deploy-war` : By default will generate and deploy all necessary war, car, and jar files to the Geronimo server.
+* `deploy-libs` : Deploys jar files residing in the `lib` folder of installed Grails plugins to the Geronimo server.
+* `deploy-common-resource-packages` : Deploys grails-core and installed Grails plugins as Geronimo car plugins or rar modules1.
