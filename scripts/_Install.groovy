@@ -47,6 +47,8 @@ geronimoDefaultSettings {
     this.'no-geronimo-deploy-libs' = false
 	// If true, grails tomcat plugin will not be deployed (not usually necessary for geronimo server)
 	this.'no-geronimo-deploy-tomcat' = true
+	// Options are 'gsh' to use gshell or 'native-nix' for deployer.sh
+	this.'geronimo-deployer' = 'native-nix' 
     // The version of geronimo we support
     this.'geronimo-version' = '2.1.6'
 }

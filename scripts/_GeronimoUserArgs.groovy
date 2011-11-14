@@ -35,10 +35,6 @@ def configUtilMap = [
 	    getGeronimoSetting( 'geronimo-staging-dir' )
 	},
 
-	getGeronimoVersion : {
-		getGeronimoSetting( 'geronimo-version' )
-	},
-
 	getGeronimoShouldGenerateCommonResourcePackages : {
 	   !getGeronimoSetting( 'no-geronimo-common-resource-packages' )
 	},
@@ -57,6 +53,14 @@ def configUtilMap = [
 	
 	getGeronimoShouldDeployTomcat : {
 		!getGeronimoSetting( 'no-geronimo-deploy-tomcat' )
+	},
+
+	getGeronimoDeployer : {
+		getGeronimoSetting( 'geronimo-deployer' )
+	},
+
+	getGeronimoVersion : {
+		getGeronimoSetting( 'geronimo-version' )
 	},
 	
 	// Maven settings

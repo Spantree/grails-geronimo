@@ -44,21 +44,31 @@ The geronimoDefaultSettings map contains options for war generation and geronimo
 * `geronimo-user` : The Geronimo admin user name. Necessary for deploying war files.
 * `geronimo-pass` : The Geronimo admin password. Necessary for deploying war files.
 * `geronimo-staging-dir` : The temporary staging dir for deploying library jars. Library jars are jar files located in plugin `lib` directories.
-* `no-geronimo-cars` : Must be `true` or `false`. If true, car files for grails-core and plugin dependencies will not be generated when generating a skinny war. This is useful for improving iteration times if they have already been generated. If false, dependency car files will always be generated whenever a skinny war is generated.
+* `no-geronimo-common-resource-packages` : Must be `true` or `false`. If true, car/rar files for grails-core and plugin dependencies will not be generated when generating a skinny war. This is useful for improving iteration times if they have already been generated. If false, dependency car/rar files will always be generated whenever a skinny war is generated.
 * `no-geronimo-war` : Must be `true` or `false`. If true, a skinny war will not be built during war deployment.  If false, a skinny war will be generated during war deployment.
-* `no-geronimo-deploy-cars` : Must be `true` or `false`. If true, cars files for grails-core and plugin dependencies will not be deployed when deploying a war file.  This is useful for improving iteration times if they have already been deployed.  If false, the cars will be deployed. 
+* `no-geronimo-deploy-common-resource-packages` : Must be `true` or `false`. If true, car/rar files for grails-core and plugin dependencies will not be deployed when deploying a war file.  This is useful for improving iteration times if they have already been deployed.  If false, the cars/rars will be deployed. 
 * `no-geronimo-deploy-libs` : Must be `true` or `false`.  If true, jar files residing in plugin `lib` directories will not be deployed as libraries during skinny war deployment.  This is useful for improving iteration times if they have already been deployed.  If false, the jar files will be deployed.
+* `geronimo-deployer` : Options are `gsh` to use GShell for deployment or `native-nix` to use deployer.sh for deployment.
 * `geronimo-version` : Currently, this is not meant to be modified by the end user.  This simply states the highest version of Geronimo that is supported by the Grails Geronimo Grails Plugin.
 
 These options may also be specified via commandline.  For example, `grails -Dno-geronimo-deploy-cars deployWar` will deploy a skinny war without deploying grails-core and plugin dependencies.
 
 #### ivyToMavenArtifactMap
 
-Maven (with the Geronimo Maven Car Plugin) is used for packaging grails-core and plugin dependencies into deployable Geronimo plugin car files.  Since Grails uses Ivy, certain dependencies must be converted to Maven names in order to work with Maven packaging.  This map is meant to do just that.  It maps an Ivy `group ID:artifact ID` key string to a map containing the corresponding Maven group and artifact IDs.  This map is exposed in `_GeronimoConfig.groovy` in case additional artifacts need to be coverted.
+Maven (with the Geronimo Maven Car or Maven Rar Plugin) is used for packaging grails-core and plugin dependencies into deployable Geronimo plugin car/rar files.  Since Grails uses Ivy, certain dependencies must be converted to Maven names in order to work with Maven packaging.  This map is meant to do just that.  It maps an Ivy `group ID:artifact ID` key string to a map containing the corresponding Maven group and artifact IDs.  This map is exposed in `_GeronimoConfig.groovy` in case additional artifacts need to be coverted.
 
-#### mavenSettings
+#### mavenDefaultSettings
 
 This mapping specifies additional maven configuration such as packaging and application version.  The parameter 'maven-opts' may be specified via commandline (e.g. - `grails -Dmaven-opts='-X' generateCars`).
+
+* `maven-group-id` : The group id to use for deploying car/rar files to the geronimo repository.
+* `maven-base-dir` : The directory to use for staging car/rar files, as well as maven pom and plan xmls
+* `maven-packaging` : Options are 'car' or 'rar'.  This setting determines whether car or rar files are used for bundling common resource packages.
+* `maven-opts` : Ideally used for debugging, this allows any additional commandline parameters to be passed to the maven build during car/rar generation.
+
+#### additionalPluginDependencies
+
+This map allows bundling of additional jar dependencies within a generated car or rar file.  Currently, this bundles additional hibernate and dom4j dependencies into the grails-core plugin to allow proper classpath resolution when deploying with rar files.
 
 ### Advanced Usage
 

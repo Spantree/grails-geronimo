@@ -20,7 +20,7 @@ gshExecCmd = { geronimoHome, cmd ->
 }
 
 // Runs a deploy.sh command
-deployerExecCmd = { geronimoHome, cmd ->
+deployerShExecCmd = { geronimoHome, cmd ->
 	def command = "${geronimoHome}/bin/deploy.sh $cmd"
     println "Executing ${command}"
     def proc = command.execute()
@@ -33,7 +33,7 @@ deployerExecCmd = { geronimoHome, cmd ->
 // Deployment policy maps
 
 // GShell deployment policy
-gshDeployPolicyMap = [
+gshDeploymentPolicyMap = [
 
 	// Installs a library via GShell
 	installLibrary : { fileName, groupId, user=null, pass=null ->
@@ -54,26 +54,35 @@ gshDeployPolicyMap = [
 ]
 
 // Deploy.sh deployment policy
-deployerDeployPolicyMap = [
+nativeNixDeploymentPolicyMap = [
 
 	// Installs a library via deploy shell script
 	installLibrary : { fileName, groupId, user=null, pass=null ->
-		deployerExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} install-library --groupId ${groupId} ${fileName}" )
+		deployerShExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} install-library --groupId ${groupId} ${fileName}" )
 	},
 	
 	// Installs a plugin via deploy shell script
 	installPlugin : { pluginPath, user=null, pass=null ->
-		deployerExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} install-plugin ${pluginPath}" )
+		deployerShExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} install-plugin ${pluginPath}" )
 	},
 	
 	// Deploys a module via deploy shell script
 	deployModule : { warPath, user=null, pass=null ->
-		deployerExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} deploy ${warPath}" )
+		deployerShExecCmd( getConfigUtil().getGeronimoHome(), "-u ${safeUser(user)} -p ${safePass(pass)} deploy ${warPath}" )
 	}
 ]
 
+// Maps a string id to a deployment policy
+deploymentPolicesConfigMap = [
+	'gsh' : gshDeploymentPolicyMap,
+	'native-nix' : nativeNixDeploymentPolicyMap
+]
+
+// Select policy type based on deployment configuration
+def geronimoDeploymentPolicyMap = deploymentPolicesConfigMap[ getConfigUtil().getGeronimoDeployer() ] ?: gshDeploymentPolicyMap
+
 // Return our deployment policy
-getGeronimoDeploymentPolicy = { deployerDeployPolicyMap }
+getGeronimoDeploymentPolicy = { geronimoDeploymentPolicyMap }
 
 // Targets for deploying to Geronimo
 

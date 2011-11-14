@@ -318,8 +318,6 @@ geronimoRarPolicy = [
 			if ( satisfiesTomcatCriteria( pluginBaseDir.name ) ) {
 	        	def pluginRarDir = new File( "${pluginBaseDir}/target" )
 	        	pluginRarDir.eachFileMatch(~/.*\.rar/) {
-					println "Attempting to deploy"
-					println getGeronimoDeploymentPolicy() as String
 					getGeronimoDeploymentPolicy().deployModule( it.absolutePath )
 	        	}
 			}
