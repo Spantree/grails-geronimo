@@ -44,27 +44,35 @@ class Module {
     String packaging
 
     // Compact string representation
-    String toString() {
-        "$groupId:$artifactId:$version:$packaging"
-    }
+    String toString() { "$groupId:$artifactId:$version:$packaging" }
 
     // Hash code to allow for set operations
-    int hashCode() {
-        return this.toString().hashCode()
-    }
+    int hashCode() { this.toString().hashCode() }
+
+	// A utility class to generate an archived resource name
+	static String getArchivePackagedName( String artifactId, String version, String packaging ) {
+		"${artifactId}-${version}.${packaging}"
+	}
 
     // Returns the name of jar file representing this dependency
-    String getPackagedName() {
-        "${artifactId}-${version}.${packaging}"
-    }
+    String getPackagedName() { getArchivePackagedName( artifactId, version, packaging ) }
 
+	// Returns the name of maven jar file representing this dependency
+	String getMavenPackagedName( def ivyToMavenArtifactMap ) {
+		getArchivePackagedName(
+			this.getMavenGroupAndArtifactIds( ivyToMavenArtifactMap ).artifactId,
+			this.version,
+			this.packaging
+			)
+	}
+	
 	// Default is to return unmapped group and artifact ids (needed for geronimo-web.xml dependencies)
     Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
-        return [ groupId : this.groupId, artifactId : this.artifactId ]
-    }
+		[ groupId : this.groupId, artifactId : this.artifactId ]
+	}
 }
 
-// A high level geronimo war or plugin car with it's associated dependencies and libs
+// A high level geronimo war or plugin car/rar with it's associated dependencies and libs
 class GeronimoModule extends Module {
     // List of dependencies
     def dependencies
@@ -72,14 +80,10 @@ class GeronimoModule extends Module {
     def libs
 
     // Returns string description for maven pom
-    String getMavenName() {
-        "Geronimo Plugins :: Geronimo ${this.artifactId} Plugin"
-    }
+    String getMavenName() { "Geronimo Plugins :: Geronimo ${this.artifactId} Plugin" }
 
 	// Returns true if any libs or dependencies exist
-	boolean shouldGenerateMavenXml() {
-		return (dependencies?.size() > 0) || (libs?.size() > 0)
-	}
+	boolean shouldGenerateMavenXml() { (dependencies?.size() > 0) || (libs?.size() > 0) }
 }
 
 // A class for storing info on a single dependency
@@ -105,7 +109,7 @@ class DependencyModule extends Module {
 
     // Returns Maven mapped group and artifact identifiers
     Map getMavenGroupAndArtifactIds( def ivyToMavenArtifactMap ) {
-        return ivyToMavenArtifactMap["${this.groupId}:${this.artifactId}"] ?: [
+        ivyToMavenArtifactMap["${this.groupId}:${this.artifactId}"] ?: [
             groupId : this.groupId,
             artifactId: this.artifactId.replaceAll( /^org\.springframework\./, "spring-" ).replaceAll( /\./, "-" )
         ]

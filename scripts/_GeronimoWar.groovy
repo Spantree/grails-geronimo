@@ -72,8 +72,15 @@ target(skinnyWar: "Generates a skinny war") {
     def jarsToDelete = []
     def libDir = new File("${stagingDir}/WEB-INF/lib")
     def providedModules = getProvidedModules()
-    def providedJars = [ providedModules*.dependencies*.packagedName, providedModules*.libs*.file*.name ].flatten()
-
+    def providedJars = [
+		// ivy dependencies
+		providedModules*.dependencies*.packagedName,
+		// maven dependencies
+		providedModules.collect { it.dependencies*.getMavenPackagedName( getIvyToMavenArtifactMap() ) },
+		// bundled dependencies
+		providedModules*.libs*.file*.name
+		].flatten().unique()
+	
     // Iterate over all jar files within lib dir
     libDir.eachFileMatch(~/.*\.jar/) { jarFile ->
         if ( jarFile.name in providedJars )
