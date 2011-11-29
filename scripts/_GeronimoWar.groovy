@@ -95,8 +95,10 @@ target(skinnyWar: "Generates a skinny war") {
     }
 
     // Generate geronimo-web.xml
-    buildGeronimoWebXml( getDefaultGeronimoWebXmlParams( getGeronimoPackagingPolicy().getExternalDependencies() ) )
-
+	if ( getConfigUtil().getGeronimoShouldBuildGeronimoWebXml()) {
+    	buildGeronimoWebXml( getDefaultGeronimoWebXmlParams( getGeronimoPackagingPolicy().getExternalDependencies() ) )
+	}
+	
     // Create the war file
     generateWarArchive( manifestFile )
 

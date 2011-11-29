@@ -63,6 +63,10 @@ def configUtilMap = [
 		getGeronimoSetting( 'geronimo-version' )
 	},
 	
+	getGeronimoShouldBuildGeronimoWebXml : {
+		getGeronimoSetting( 'geronimo-build-geronimo-web-xml' )
+	},
+	
 	// Maven settings
 
 	getMavenGroupId : {

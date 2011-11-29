@@ -51,6 +51,8 @@ geronimoDefaultSettings {
 	this.'geronimo-deployer' = 'native-nix' 
     // The version of geronimo we support
     this.'geronimo-version' = '2.1.6'
+	// If true, geronimo-web.xml will be generated, otherwise no geronimo-web.xml will be generated into the war
+	this.'geronimo-build-geronimo-web-xml' = true
 }
 
 // Map from ivy artifacts to maven artifacts
