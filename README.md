@@ -87,6 +87,7 @@ The following is a list of all commands available for the Geronimo Grails Plugin
 * `stage-core` : Generates Maven pom.xml and plan.xml files for grails-core which can be packaged into Geronimo plugins
 * `stage-plugins` : Generates a Maven pom.xml and plan.xml for each installed plugin
 * `generate-common-resource-packages` : Stages and packages grails-core and installed Grails plugins as deployable Geronimo plugin car/rar files
+* `geronimo-build-geronimo-web-xml` : If true, geronimo-web.xml will be generated for the skinny/fat war. If false, no geronimo-web.xml will be generated.
 * `fat-war` : Similar to `grails war` but also bundles a `geronimo-web.xml` within the war to allow for Geronimo deployment.
 * `skinny-war` : Similar to `fatWar` but grails-core and installed Grails plugins are bundled as external Geronimo plugin car files.
 
